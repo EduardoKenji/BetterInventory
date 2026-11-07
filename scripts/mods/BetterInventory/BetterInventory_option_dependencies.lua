@@ -271,40 +271,561 @@ function OptionDependencies.create(context)
 		end
 	end
 
+	local function highlight_state()
+		local s = {}
+		local equipped_mode = mod:get("highlight_equipped_items")
+		local new_item_mode = mod:get("new_item_highlight_mode")
+
+		s.equipped_enabled = equipped_mode ~= "off" and equipped_mode ~= false
+		s.equipped_glow_enabled = equipped_mode == "soft_glow" or equipped_mode == true
+		s.equipped_dashes_enabled = equipped_mode == "animated_dashes" or equipped_mode == "pulsing_dashes"
+		s.equipped_solid_enabled = equipped_mode == "solid_border"
+		s.new_item_enhanced = new_item_mode ~= "native"
+		s.new_item_glow_enabled = new_item_mode == "soft_glow"
+		s.new_item_dashes_enabled = new_item_mode == "animated_dashes" or new_item_mode == "pulsing_dashes"
+		s.new_item_solid_enabled = new_item_mode == "solid_border"
+
+		return s
+	end
+
+	local function dependency_state()
+		local s = {}
+
+		s.grid_enabled = mod:get("enable_grid_layout") ~= false
+		s.single_column_enabled = not s.grid_enabled
+		s.automatic_height = mod:get("automatic_card_height") ~= false
+		s.native_reason = mod:localize("option_requires_grid_layout")
+		s.single_column_reason = mod:localize("option_requires_single_column_mode")
+		s.card_height_enabled = s.grid_enabled and not s.automatic_height
+		s.card_height_reason = s.grid_enabled and mod:localize("option_disabled_by_automatic_height") or s.native_reason
+		s.window_expansion_enabled = s.grid_enabled and mod:get("expand_inventory_window") ~= false
+		s.curio_expansion_enabled = s.window_expansion_enabled and mod:get("expand_curio_inventory_window") ~= false
+		s.expansion_reason = s.grid_enabled and mod:localize("option_requires_window_expansion") or s.native_reason
+		s.weapon_columns = math.max(Layout.columns(mod, 5, "melee"), Layout.columns(mod, 5, "ranged"))
+		s.weapon_width_threshold = mod:get("weapon_extra_width_column_threshold") == "five_only" and 5 or 4
+		s.weapon_extra_width_enabled = s.window_expansion_enabled and s.weapon_columns >= s.weapon_width_threshold
+		s.weapon_extra_width_reason = not s.window_expansion_enabled and s.expansion_reason or mod:localize("option_requires_weapon_extra_width_threshold")
+		s.curio_target_reason = not s.window_expansion_enabled and s.expansion_reason or not s.curio_expansion_enabled and mod:localize("option_requires_curio_expansion") or nil
+		s.armoury_grid_enabled = s.grid_enabled and mod:get("enable_armoury_requisition_grid") ~= false
+		s.global_store_grid_enabled = s.grid_enabled and mod:get("enable_global_store_grid") ~= false
+		s.global_store_integration_enabled = mod:get("enable_global_store_integration") ~= false
+		s.global_store_native_enabled = s.global_store_integration_enabled and not s.grid_enabled
+		s.armoury_expansion_enabled = s.armoury_grid_enabled and mod:get("expand_armoury_requisition_window") ~= false
+		s.armoury_reason = s.grid_enabled and mod:localize("option_requires_armoury_grid") or s.native_reason
+		s.armoury_target_reason = s.armoury_grid_enabled and mod:localize("option_requires_armoury_expansion") or s.armoury_reason
+		s.weapon_perks_enabled = mod:get("show_weapon_perks") ~= false
+		s.weapon_perk_ranks_enabled = s.weapon_perks_enabled and mod:get("show_weapon_perk_rank_symbols") ~= false
+		s.weapon_blessing_mode = mod:get("weapon_blessing_display_mode") or "ranked_text"
+		s.weapon_blessing_icons_enabled = s.weapon_blessing_mode == "icons"
+		s.weapon_blessing_ranked_text_enabled = s.weapon_blessing_mode == "ranked_text"
+		s.weapon_blessing_text_enabled = s.weapon_blessing_mode == "text" or s.weapon_blessing_ranked_text_enabled
+		s.weapon_blessings_enabled = s.weapon_blessing_mode ~= "off"
+		s.single_column_blessing_icons_enabled = s.single_column_enabled and s.weapon_blessing_text_enabled and mod:get("single_column_blessing_icons_on_right") ~= false
+		s.blessing_icon_controls_enabled = s.weapon_blessing_icons_enabled or s.single_column_blessing_icons_enabled
+		s.blessing_icon_controls_reason = s.single_column_enabled and s.weapon_blessing_text_enabled and mod:localize("option_requires_single_column_blessing_icons") or mod:localize("option_requires_weapon_blessings")
+		s.weapon_rank_symbols_enabled = s.weapon_perk_ranks_enabled or s.weapon_blessing_ranked_text_enabled
+		s.weapon_perk_blessing_sections_enabled = s.weapon_perks_enabled and s.weapon_blessings_enabled
+		s.detailed_curio_profile = (mod:get("curio_display_profile") or "detailed") == "detailed"
+		s.weapon_rarity_rating_enabled = mod:get("weapon_rarity_rating_mode") ~= "off" or mod:get("character_overview_weapon_rarity_rating_mode") ~= "off"
+		s.curio_rarity_rating_enabled = mod:get("curio_rarity_rating_mode") ~= "off" or mod:get("character_overview_curio_rarity_rating_mode") ~= "off"
+		s.wkc_zero_kills_enabled = mod:get("weapon_kill_counter_show_zero_kills") ~= false
+		s.quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
+		s.quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
+		s.automatic_curio_enabled = mod:get("enable_automatic_curio_acquisition") == true
+		s.automatic_curio_reason = mod:localize("option_requires_automatic_curio_acquisition")
+		s.automatic_curio_character_mode = mod:get("automatic_curio_target_mode") ~= "classes"
+		s.automatic_curio_classes_enabled = s.automatic_curio_enabled and not s.automatic_curio_character_mode
+		s.automatic_curio_characters_enabled = s.automatic_curio_enabled and s.automatic_curio_character_mode
+		s.automatic_curio_classes_reason = s.automatic_curio_enabled and mod:localize("option_requires_automatic_curio_classes_mode") or s.automatic_curio_reason
+		s.automatic_curio_characters_reason = s.automatic_curio_enabled and mod:localize("option_requires_automatic_curio_characters_mode") or s.automatic_curio_reason
+		s.lantern_installed = get_mod("Lantern of the Omnissiah") ~= nil
+		s.lantern_reason = mod:localize("option_requires_lantern_of_the_omnissiah")
+		s.myfavorites_available = FavoriteIntegration and type(FavoriteIntegration.is_myfavorites_available) == "function" and FavoriteIntegration.is_myfavorites_available()
+		s.myfavorites_reason = mod:localize("option_requires_myfavorites")
+		s.quick_look_card_grid_enabled = s.grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
+		s.quick_look_card_grid_reason = s.grid_enabled and mod:localize("option_requires_quick_look_card_grid_integration") or s.native_reason
+		s.quick_look_card_single_column_enabled = s.single_column_enabled and mod:get("enable_quick_look_card_single_column_integration") ~= false
+		s.quick_look_card_single_column_reason = s.single_column_enabled and mod:localize("option_requires_quick_look_card_single_column_integration") or s.single_column_reason
+		s.weapon_modifier_lowest_color_enabled = s.quick_look_card_grid_enabled or s.quick_look_card_single_column_enabled
+		s.weapon_modifier_lowest_color_reason = s.grid_enabled and s.quick_look_card_grid_reason or s.quick_look_card_single_column_reason
+		s.quick_look_card_above_power = s.quick_look_card_grid_enabled and mod:get("quick_look_card_grid_stat_position") ~= "name_left" and mod:get("quick_look_card_grid_stat_position") ~= "name_right"
+		s.quick_look_card_bottom_padding_reason = s.quick_look_card_grid_enabled and mod:localize("option_requires_quick_look_card_above_power") or s.quick_look_card_grid_reason
+		s.global_store_integration_reason = s.grid_enabled and mod:localize("option_requires_global_store_integration") or s.native_reason
+		s.global_store_reason = s.global_store_integration_enabled and s.grid_enabled and mod:localize("option_requires_global_store_grid") or s.global_store_integration_reason
+		s.global_store_layout_enabled = s.global_store_integration_enabled and (s.global_store_grid_enabled or s.global_store_native_enabled)
+		s.character_overview_curio_enabled = mod:get("enable_character_overview_curio_details") ~= false
+		s.character_overview_melee_enabled = mod:get("enable_character_overview_melee_mirror") ~= false
+		s.character_overview_ranged_enabled = mod:get("enable_character_overview_ranged_mirror") ~= false
+		s.character_overview_weapon_enabled = (s.character_overview_melee_enabled or s.character_overview_ranged_enabled) and mod:get("enable_quick_look_card_single_column_integration") ~= false
+		s.character_overview_dump_stat_enabled, s.character_overview_dump_stat_reason = character_overview_dump_stat_style_state()
+		s.custom_item_colors_enabled = mod:get("enable_custom_item_name_and_colors") ~= false
+		s.custom_item_colors_reason = mod:localize("option_requires_custom_item_name_and_colors")
+		s.auto_crafter_mastery_enabled = mod:get("auto_crafter_level_mastery_20") ~= false
+		s.auto_crafter_perks_enabled = s.auto_crafter_mastery_enabled and mod:get("auto_crafter_change_perks") ~= false
+		s.auto_crafter_allocate_enabled = s.auto_crafter_mastery_enabled and mod:get("auto_crafter_allocate_mastery_points") ~= false
+		s.auto_crafter_blessings_enabled = s.auto_crafter_allocate_enabled and mod:get("auto_crafter_change_blessings") ~= false
+		s.mastery_reason = mod:localize("option_requires_auto_crafter_mastery_20")
+		s.reuse_inventory_base = mod:get("auto_crafter_reuse_inventory_base") ~= false
+		s.automatic_discard_enabled = s.quick_discard_enabled and mod:get("quick_discard_mode") == "automatic"
+		s.automatic_discard_reason = s.quick_discard_enabled and mod:localize("option_requires_automatic_discard_mode") or s.quick_discard_reason
+		s.curio_protection_enabled = s.quick_discard_enabled and mod:get("quick_discard_protect_high_level_curios") ~= false
+		s.health_roll_protection_enabled = s.quick_discard_enabled and mod:get("quick_discard_protect_health_roll_curios") == true
+		s.toughness_roll_protection_enabled = s.quick_discard_enabled and mod:get("quick_discard_protect_toughness_roll_curios") == true
+		s.automatic_health_enabled = s.automatic_curio_enabled and mod:get("automatic_curio_buy_health") ~= false
+		s.automatic_toughness_enabled = s.automatic_curio_enabled and mod:get("automatic_curio_buy_toughness") ~= false
+		s.automatic_stamina_enabled = s.automatic_curio_enabled and mod:get("automatic_curio_buy_stamina") == true
+
+		return s
+	end
+
+	-- Single source of truth for the Mod Options entries the dependency logic
+	-- manages (3.8.0 audit B19). bind_option_dependencies binds exactly the ids
+	-- listed here and the refresh functions grey exactly these rows, so an
+	-- option can no longer be greyed without being bound. A row without a
+	-- `rule` is bound only. `group` picks the state builder: nil is the main
+	-- dependency_state(), "highlight" is highlight_state().
+	local OPTION_DEPENDENCY_RULES = {
+		{
+			ids = { "equipped_highlight_color_preset", "equipped_highlight_color_r", "equipped_highlight_color_g", "equipped_highlight_color_b" },
+			group = "highlight",
+			rule = function(s) return s.equipped_enabled, mod:localize("option_requires_equipped_highlight") end,
+		},
+		{
+			ids = { "equipped_highlight_glow_intensity" },
+			group = "highlight",
+			rule = function(s) return s.equipped_glow_enabled, mod:localize("option_requires_equipped_highlight_soft_glow") end,
+		},
+		{
+			ids = { "equipped_highlight_animated_border_width" },
+			group = "highlight",
+			rule = function(s) return s.equipped_dashes_enabled, mod:localize("option_requires_equipped_highlight_animated_dashes") end,
+		},
+		{
+			ids = { "equipped_highlight_solid_border_width" },
+			group = "highlight",
+			rule = function(s) return s.equipped_solid_enabled, mod:localize("option_requires_equipped_highlight_solid_border") end,
+		},
+		{
+			ids = { "new_item_highlight_color_preset", "new_item_highlight_color_r", "new_item_highlight_color_g", "new_item_highlight_color_b" },
+			group = "highlight",
+			rule = function(s) return s.new_item_enhanced, mod:localize("option_requires_new_item_enhanced_highlight") end,
+		},
+		{
+			ids = { "new_item_highlight_glow_intensity" },
+			group = "highlight",
+			rule = function(s) return s.new_item_glow_enabled, mod:localize("option_requires_new_item_soft_glow") end,
+		},
+		{
+			ids = { "new_item_highlight_animated_border_width" },
+			group = "highlight",
+			rule = function(s) return s.new_item_dashes_enabled, mod:localize("option_requires_new_item_animated_dashes") end,
+		},
+		{
+			ids = { "new_item_highlight_solid_border_width" },
+			group = "highlight",
+			rule = function(s) return s.new_item_solid_enabled, mod:localize("option_requires_new_item_solid_border") end,
+		},
+		{
+			ids = {
+				"melee_columns",
+				"ranged_columns",
+				"curio_columns",
+				"expand_inventory_window",
+				"grid_spacing",
+				"automatic_card_height",
+				"enable_hadron_entreat_grid",
+				"enable_armoury_requisition_grid",
+				"enable_melk_limited_grid",
+				"enable_melk_multi_operative_grid",
+				"enable_global_store_grid",
+			},
+			rule = function(s) return s.grid_enabled, s.native_reason end,
+		},
+		{
+			ids = { "enable_hadron_single_column_mirror", "enable_armoury_single_column_mirror" },
+			rule = function(s) return s.single_column_enabled, s.single_column_reason end,
+		},
+		{
+			ids = { "card_height" },
+			rule = function(s) return s.card_height_enabled, s.card_height_reason end,
+		},
+		{
+			ids = { "expand_curio_inventory_window", "weapon_extra_width_column_threshold" },
+			rule = function(s) return s.window_expansion_enabled, s.expansion_reason end,
+		},
+		{
+			ids = { "five_column_weapon_extra_width" },
+			rule = function(s) return s.weapon_extra_width_enabled, s.weapon_extra_width_reason end,
+		},
+		{
+			ids = { "curio_target_card_width" },
+			rule = function(s) return s.curio_expansion_enabled, s.curio_target_reason end,
+		},
+		{
+			ids = {
+				"expand_armoury_requisition_window",
+				"enable_armoury_requisition_sorting_panel",
+				"brighten_armoury_item_levels",
+				"three_column_weapon_name_font_size",
+			},
+			rule = function(s) return s.armoury_grid_enabled, s.armoury_reason end,
+		},
+		{
+			ids = { "armoury_requisition_target_card_width" },
+			rule = function(s) return s.armoury_expansion_enabled, s.armoury_target_reason end,
+		},
+		{
+			ids = { "enable_melk_limited_grid" },
+			rule = function(s) return s.grid_enabled, s.native_reason end,
+		},
+		{
+			ids = { "enable_global_store_integration" },
+			rule = function(s) return true end,
+		},
+		{
+			ids = { "enable_global_store_grid", "enable_melk_multi_operative_grid" },
+			rule = function(s) return s.global_store_integration_enabled and s.grid_enabled, s.global_store_integration_reason end,
+		},
+		{
+			ids = { "enable_global_store_sorting_panel" },
+			rule = function(s) return s.global_store_integration_enabled and s.global_store_grid_enabled, s.global_store_reason end,
+		},
+		{
+			ids = {
+				"global_store_character_photo_size_percent",
+				"global_store_price_row_padding",
+				"global_store_character_info_gap",
+				"global_store_character_class_icon_size",
+				"global_store_character_name_font_size",
+				"global_store_compact_character_names",
+			},
+			rule = function(s) return s.global_store_layout_enabled, s.global_store_reason end,
+		},
+		{
+			ids = {
+				"global_store_single_column_modifier_horizontal_position",
+				"global_store_single_column_modifier_vertical_position",
+			},
+			rule = function(s) return s.global_store_native_enabled, s.global_store_integration_reason end,
+		},
+		{
+			ids = { "character_overview_weapon_rarity_rating_mode" },
+			rule = function(s) return s.character_overview_melee_enabled or s.character_overview_ranged_enabled, mod:localize("option_requires_character_overview_weapon_mirror") end,
+		},
+		{
+			ids = { "character_overview_curio_rarity_rating_mode" },
+			rule = function(s) return s.character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details") end,
+		},
+		{
+			ids = { "character_overview_show_melee_rarity_strip" },
+			rule = function(s) return s.character_overview_melee_enabled, mod:localize("option_requires_character_overview_melee_mirror") end,
+		},
+		{
+			ids = { "character_overview_show_ranged_rarity_strip" },
+			rule = function(s) return s.character_overview_ranged_enabled, mod:localize("option_requires_character_overview_ranged_mirror") end,
+		},
+		{
+			ids = { "character_overview_blessing_name_mode" },
+			rule = function(s) return s.character_overview_weapon_enabled and s.weapon_blessing_text_enabled, not s.character_overview_weapon_enabled and mod:localize("option_requires_character_overview_weapon_mirror") or mod:localize("option_requires_weapon_blessing_text") end,
+		},
+		{
+			ids = { "character_overview_show_only_dump_stat" },
+			rule = function(s) return s.character_overview_weapon_enabled, mod:localize("option_requires_character_overview_weapon_mirror") end,
+		},
+		{
+			ids = {
+				"character_overview_dump_stat_horizontal_offset",
+				"character_overview_dump_stat_font_scale_percent",
+				"character_overview_dump_stat_color_preset",
+				"character_overview_dump_stat_color_r",
+				"character_overview_dump_stat_color_g",
+				"character_overview_dump_stat_color_b",
+			},
+			rule = function(s) return s.character_overview_dump_stat_enabled, s.character_overview_dump_stat_reason end,
+		},
+		{
+			ids = {
+				"character_overview_show_curio_rarity_strip",
+				"character_overview_curio_name_mode",
+				"character_overview_curio_font_size_percent",
+				"character_overview_use_native_curio_overlay",
+			},
+			rule = function(s) return s.character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details") end,
+		},
+		{
+			ids = { "weapon_perk_compression", "show_weapon_perk_rank_symbols" },
+			rule = function(s) return s.weapon_perks_enabled, mod:localize("option_requires_weapon_perks") end,
+		},
+		{
+			ids = { "weapon_perk_rank_icon_size" },
+			rule = function(s) return s.weapon_rank_symbols_enabled, mod:localize("option_requires_rank_symbols") end,
+		},
+		{
+			ids = {
+				"remove_weapon_perk_plus_signs",
+				"weapon_perk_text_color_preset",
+				"weapon_perk_text_color_r",
+				"weapon_perk_text_color_g",
+				"weapon_perk_text_color_b",
+				"weapon_perk_text_opacity",
+				"weapon_perk_vertical_spacing",
+			},
+			rule = function(s) return s.weapon_perks_enabled, mod:localize("option_requires_weapon_perks") end,
+		},
+		{
+			ids = {
+				"blessing_text_item_level_separation",
+				"auto_fit_long_blessing_names",
+				"truncate_long_blessing_names",
+				"weapon_blessing_text_color_preset",
+				"weapon_blessing_text_color_r",
+				"weapon_blessing_text_color_g",
+				"weapon_blessing_text_color_b",
+				"weapon_blessing_text_opacity",
+				"weapon_blessing_text_vertical_spacing",
+				"weapon_blessing_text_bottom_padding",
+			},
+			rule = function(s) return s.weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text") end,
+		},
+		{
+			ids = { "blessing_icon_size", "blessing_icon_spacing" },
+			rule = function(s) return s.blessing_icon_controls_enabled, s.blessing_icon_controls_reason end,
+		},
+		{
+			ids = { "weapon_perk_blessing_spacing" },
+			rule = function(s) return s.weapon_perk_blessing_sections_enabled, mod:localize("option_requires_perk_and_blessing_sections") end,
+		},
+		{
+			ids = { "curio_secondary_stat_font_size", "curio_primary_secondary_spacing" },
+			rule = function(s) return s.detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile") end,
+		},
+		{
+			ids = { "weapon_rarity_rating_use_card_background_color", "weapon_rarity_rating_opacity" },
+			rule = function(s) return s.weapon_rarity_rating_enabled, mod:localize("option_requires_weapon_rarity_rating") end,
+		},
+		{
+			ids = { "curio_rarity_rating_use_card_background_color", "curio_rarity_rating_opacity" },
+			rule = function(s) return s.curio_rarity_rating_enabled, mod:localize("option_requires_curio_rarity_rating") end,
+		},
+		{
+			ids = { "weapon_kill_counter_show_zero_kills_in_stores" },
+			rule = function(s) return s.wkc_zero_kills_enabled, mod:localize("option_requires_weapon_kill_counter_zero_kills") end,
+		},
+		{
+			ids = { "single_column_layout_group", "single_column_weapon_name_font_size" },
+			rule = function(s) return s.single_column_enabled, s.single_column_reason end,
+		},
+		{
+			ids = { "single_column_blessing_icons_on_right" },
+			rule = function(s) return s.single_column_enabled and s.weapon_blessing_text_enabled, not s.single_column_enabled and s.single_column_reason or mod:localize("option_requires_weapon_blessing_text") end,
+		},
+		{
+			ids = {
+				"quick_look_card_single_column_font_size",
+				"quick_look_card_single_column_label_value_gap",
+				"quick_look_card_single_column_horizontal_position",
+				"quick_look_card_single_column_vertical_position",
+			},
+			rule = function(s) return s.quick_look_card_single_column_enabled, s.quick_look_card_single_column_reason end,
+		},
+		{
+			ids = { "quick_look_card_grid_stat_position", "quick_look_card_grid_font_size" },
+			rule = function(s) return s.quick_look_card_grid_enabled, s.quick_look_card_grid_reason end,
+		},
+		{
+			ids = { "quick_look_card_grid_bottom_padding" },
+			rule = function(s) return s.quick_look_card_above_power, s.quick_look_card_bottom_padding_reason end,
+		},
+		{
+			ids = {
+				"weapon_modifier_lowest_color_preset",
+				"weapon_modifier_lowest_color_r",
+				"weapon_modifier_lowest_color_g",
+				"weapon_modifier_lowest_color_b",
+				"weapon_modifier_lowest_color_opacity",
+			},
+			rule = function(s) return s.weapon_modifier_lowest_color_enabled, s.weapon_modifier_lowest_color_reason end,
+		},
+		{
+			ids = { "name_it_force_curio_name_in_detailed_mode", "curio_content_name_it_curio_name" },
+			rule = function(s) return s.detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile") end,
+		},
+		{
+			ids = { "enable_custom_item_name_and_colors" },
+			rule = function(s) return true end,
+		},
+		{
+			ids = {
+				"custom_item_name_keybind",
+				"custom_item_name_color_keybind",
+				"custom_item_background_color_keybind",
+				"custom_item_skip_confirmation_prompts",
+				"custom_item_preserve_card_shading",
+				"custom_item_override_weapon_information_color",
+				"custom_item_override_weapon_rarity_keyword_color",
+				"custom_item_override_weapon_information_name_color",
+			},
+			rule = function(s) return s.custom_item_colors_enabled, s.custom_item_colors_reason end,
+		},
+		{
+			ids = { "auto_crafter_defer_bad_weapon_processing" },
+			rule = function(s) return s.auto_crafter_mastery_enabled, s.mastery_reason end,
+		},
+		{
+			ids = { "auto_crafter_include_favorite_inventory_bases" },
+			rule = function(s) return s.reuse_inventory_base, mod:localize("option_requires_auto_crafter_inventory_reuse") end,
+		},
+		{
+			ids = {
+				"auto_crafter_allocate_mastery_points",
+				"auto_crafter_change_perks",
+				"auto_crafter_change_blessings",
+			},
+			rule = function(s) return s.auto_crafter_mastery_enabled, s.mastery_reason end,
+		},
+		{
+			ids = { "auto_crafter_perk_1_target", "auto_crafter_perk_2_target", "auto_crafter_show_perk_grid" },
+			rule = function(s) return s.auto_crafter_perks_enabled, s.auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_change_perks") or s.mastery_reason end,
+		},
+		{
+			ids = {
+				"auto_crafter_blessing_1_target",
+				"auto_crafter_blessing_2_target",
+				"auto_crafter_show_blessing_grid",
+			},
+			rule = function(s) return s.auto_crafter_blessings_enabled, s.auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_blessing_workflow") or s.mastery_reason end,
+		},
+		{
+			ids = { "auto_crafter_myfavorites_color" },
+			rule = function(s) return s.myfavorites_available and mod:get("auto_crafter_favorite_result") ~= false, s.myfavorites_available and mod:localize("option_requires_auto_crafter_myfavorites_color") or s.myfavorites_reason end,
+		},
+		{
+			ids = {
+				"inventory_options_controller_focus_keybind",
+				"curio_information_width_percent",
+				"curio_preview_height_percent",
+				"inventory_options_panel_width",
+				"inventory_options_panel_max_height",
+				"inventory_options_panel_row_spacing",
+				"inventory_options_panel_padding_top",
+				"inventory_options_panel_padding_bottom",
+				"inventory_options_panel_padding_left",
+				"inventory_options_panel_padding_right",
+			},
+			rule = function(s) return true end,
+		},
+		{
+			ids = { "enable_lantern_inventory_section" },
+			rule = function(s) return s.lantern_installed, s.lantern_reason end,
+		},
+		{
+			ids = { "keep_lantern_curio_panel_separate" },
+			rule = function(s) return s.lantern_installed and mod:get("enable_lantern_inventory_section") ~= false, s.lantern_reason end,
+		},
+		{
+			ids = {
+				"quick_discard_mode",
+				"quick_discard_rarity",
+				"quick_discard_max_item_level",
+				"quick_discard_protect_above_equipped_level",
+				"quick_discard_include_melee",
+				"quick_discard_include_ranged",
+				"quick_discard_include_curios",
+				"quick_discard_protect_perfect_weapons",
+				"quick_discard_protect_health_roll_curios",
+				"quick_discard_protect_toughness_roll_curios",
+				"quick_discard_protect_high_level_curios",
+				"quick_discard_keep_health_curios",
+				"quick_discard_keep_toughness_curios",
+				"quick_discard_keep_wound_curios",
+				"quick_discard_keep_stamina_curios",
+				"quick_discard_show_type_breakdown",
+				"quick_discard_show_summary_notification",
+			},
+			rule = function(s) return s.quick_discard_enabled, s.quick_discard_reason end,
+		},
+		{
+			ids = { "quick_discard_skip_automatic_confirmation", "quick_discard_disable_no_eligible_notification" },
+			rule = function(s) return s.automatic_discard_enabled, s.automatic_discard_reason end,
+		},
+		{
+			ids = { "quick_discard_curio_protection_level" },
+			rule = function(s) return s.curio_protection_enabled, s.quick_discard_enabled and mod:localize("option_requires_curio_discard_protection") or s.quick_discard_reason end,
+		},
+		{
+			ids = { "quick_discard_curio_health_roll" },
+			rule = function(s) return s.health_roll_protection_enabled, s.quick_discard_enabled and mod:localize("option_requires_curio_health_roll_protection") or s.quick_discard_reason end,
+		},
+		{
+			ids = { "quick_discard_curio_toughness_roll" },
+			rule = function(s) return s.toughness_roll_protection_enabled, s.quick_discard_enabled and mod:localize("option_requires_curio_toughness_roll_protection") or s.quick_discard_reason end,
+		},
+		{
+			ids = AUTOMATIC_CURIO_SETTING_IDS,
+			rule = function(s) return s.automatic_curio_enabled, s.automatic_curio_reason end,
+		},
+		{
+			ids = {
+				"automatic_curio_class_veteran",
+				"automatic_curio_class_zealot",
+				"automatic_curio_class_psyker",
+				"automatic_curio_class_ogryn",
+				"automatic_curio_class_adamant",
+				"automatic_curio_class_broker",
+				"automatic_curio_class_cryptic",
+			},
+			rule = function(s) return s.automatic_curio_classes_enabled, s.automatic_curio_classes_reason end,
+		},
+		{
+			ids = { "automatic_curio_min_health" },
+			rule = function(s) return s.automatic_health_enabled, s.automatic_curio_enabled and mod:localize("option_requires_automatic_curio_health") or s.automatic_curio_reason end,
+		},
+		{
+			ids = { "automatic_curio_min_toughness" },
+			rule = function(s) return s.automatic_toughness_enabled, s.automatic_curio_enabled and mod:localize("option_requires_automatic_curio_toughness") or s.automatic_curio_reason end,
+		},
+		{
+			ids = { "automatic_curio_min_stamina" },
+			rule = function(s) return s.automatic_stamina_enabled, s.automatic_curio_enabled and mod:localize("option_requires_automatic_curio_stamina") or s.automatic_curio_reason end,
+		},
+		-- Bound only: their own callbacks or the rating rows read them, nothing greys them.
+		{
+			ids = { "weapon_rarity_rating_mode", "curio_rarity_rating_mode", "highlight_equipped_items", "new_item_highlight_mode" },
+		},
+	}
+	local TRACKED_SETTING_IDS = {}
+
+	do
+		local seen = {}
+
+		for _, rule in ipairs(OPTION_DEPENDENCY_RULES) do
+			for _, setting_id in ipairs(rule.ids) do
+				if not seen[setting_id] then
+					seen[setting_id] = true
+					TRACKED_SETTING_IDS[#TRACKED_SETTING_IDS + 1] = setting_id
+				end
+			end
+		end
+	end
+
+	local function apply_dependency_rules(entries, group, state)
+		for _, rule in ipairs(OPTION_DEPENDENCY_RULES) do
+			if rule.rule and rule.group == group then
+				local enabled, reason = rule.rule(state)
+
+				for _, setting_id in ipairs(rule.ids) do
+					set_option_enabled(entries[setting_id], enabled, reason)
+				end
+			end
+		end
+	end
+
 	local function refresh_highlight_option_dependencies(entries)
 		if type(entries) ~= "table" then
 			return
 		end
 
-		local equipped_mode = mod:get("highlight_equipped_items")
-		local equipped_enabled = equipped_mode ~= "off" and equipped_mode ~= false
-		local equipped_glow_enabled = equipped_mode == "soft_glow" or equipped_mode == true
-		local equipped_dashes_enabled = equipped_mode == "animated_dashes" or equipped_mode == "pulsing_dashes"
-		local equipped_solid_enabled = equipped_mode == "solid_border"
-		local equipped_reason = mod:localize("option_requires_equipped_highlight")
-
-		set_option_enabled(entries.equipped_highlight_color_preset, equipped_enabled, equipped_reason)
-		set_option_enabled(entries.equipped_highlight_color_r, equipped_enabled, equipped_reason)
-		set_option_enabled(entries.equipped_highlight_color_g, equipped_enabled, equipped_reason)
-		set_option_enabled(entries.equipped_highlight_color_b, equipped_enabled, equipped_reason)
-		set_option_enabled(entries.equipped_highlight_glow_intensity, equipped_glow_enabled, mod:localize("option_requires_equipped_highlight_soft_glow"))
-		set_option_enabled(entries.equipped_highlight_animated_border_width, equipped_dashes_enabled, mod:localize("option_requires_equipped_highlight_animated_dashes"))
-		set_option_enabled(entries.equipped_highlight_solid_border_width, equipped_solid_enabled, mod:localize("option_requires_equipped_highlight_solid_border"))
-
-		local new_item_mode = mod:get("new_item_highlight_mode")
-		local new_item_enhanced = new_item_mode ~= "native"
-		local new_item_glow_enabled = new_item_mode == "soft_glow"
-		local new_item_dashes_enabled = new_item_mode == "animated_dashes" or new_item_mode == "pulsing_dashes"
-		local new_item_solid_enabled = new_item_mode == "solid_border"
-		local new_item_reason = mod:localize("option_requires_new_item_enhanced_highlight")
-
-		set_option_enabled(entries.new_item_highlight_color_preset, new_item_enhanced, new_item_reason)
-		set_option_enabled(entries.new_item_highlight_color_r, new_item_enhanced, new_item_reason)
-		set_option_enabled(entries.new_item_highlight_color_g, new_item_enhanced, new_item_reason)
-		set_option_enabled(entries.new_item_highlight_color_b, new_item_enhanced, new_item_reason)
-		set_option_enabled(entries.new_item_highlight_glow_intensity, new_item_glow_enabled, mod:localize("option_requires_new_item_soft_glow"))
-		set_option_enabled(entries.new_item_highlight_animated_border_width, new_item_dashes_enabled, mod:localize("option_requires_new_item_animated_dashes"))
-		set_option_enabled(entries.new_item_highlight_solid_border_width, new_item_solid_enabled, mod:localize("option_requires_new_item_solid_border"))
+		apply_dependency_rules(entries, "highlight", highlight_state())
 	end
 
 	local function bind_highlight_mode_dependency_refresh(setting_id, entry, entries)
@@ -328,302 +849,22 @@ function OptionDependencies.create(context)
 	end
 
 	local function refresh_option_dependencies()
-		local grid_enabled = mod:get("enable_grid_layout") ~= false
-		local single_column_enabled = not grid_enabled
-		local automatic_height = mod:get("automatic_card_height") ~= false
-		local native_reason = mod:localize("option_requires_grid_layout")
-		local single_column_reason = mod:localize("option_requires_single_column_mode")
+		local s = dependency_state()
 
-		for _, setting_id in ipairs({
-			"melee_columns",
-			"ranged_columns",
-			"curio_columns",
-			"expand_inventory_window",
-			"grid_spacing",
-			"automatic_card_height",
-			"enable_hadron_entreat_grid",
-			"enable_armoury_requisition_grid",
-			"enable_melk_limited_grid",
-			"enable_melk_multi_operative_grid",
-			"enable_global_store_grid",
-		}) do
-			set_option_enabled(option_dependency_entries[setting_id], grid_enabled, native_reason)
-		end
-
-		set_option_enabled(option_dependency_entries.enable_hadron_single_column_mirror, single_column_enabled, single_column_reason)
-		set_option_enabled(option_dependency_entries.enable_armoury_single_column_mirror, single_column_enabled, single_column_reason)
-
-		local card_height_enabled = grid_enabled and not automatic_height
-		local card_height_reason = grid_enabled and mod:localize("option_disabled_by_automatic_height") or native_reason
-
-		set_option_enabled(option_dependency_entries.card_height, card_height_enabled, card_height_reason)
-
-		local window_expansion_enabled = grid_enabled and mod:get("expand_inventory_window") ~= false
-		local curio_expansion_enabled = window_expansion_enabled and mod:get("expand_curio_inventory_window") ~= false
-		local expansion_reason = grid_enabled and mod:localize("option_requires_window_expansion") or native_reason
-		local weapon_columns = math.max(Layout.columns(mod, 5, "melee"), Layout.columns(mod, 5, "ranged"))
-		local weapon_width_threshold = mod:get("weapon_extra_width_column_threshold") == "five_only" and 5 or 4
-		local weapon_extra_width_enabled = window_expansion_enabled and weapon_columns >= weapon_width_threshold
-		local weapon_extra_width_reason = not window_expansion_enabled and expansion_reason or mod:localize("option_requires_weapon_extra_width_threshold")
-		local curio_target_reason = not window_expansion_enabled and expansion_reason or not curio_expansion_enabled and mod:localize("option_requires_curio_expansion") or nil
-		local armoury_grid_enabled = grid_enabled and mod:get("enable_armoury_requisition_grid") ~= false
-		local global_store_grid_enabled = grid_enabled and mod:get("enable_global_store_grid") ~= false
-		local global_store_integration_enabled = mod:get("enable_global_store_integration") ~= false
-		local global_store_native_enabled = global_store_integration_enabled and not grid_enabled
-		local armoury_expansion_enabled = armoury_grid_enabled and mod:get("expand_armoury_requisition_window") ~= false
-		local armoury_reason = grid_enabled and mod:localize("option_requires_armoury_grid") or native_reason
-		local armoury_target_reason = armoury_grid_enabled and mod:localize("option_requires_armoury_expansion") or armoury_reason
-		local weapon_perks_enabled = mod:get("show_weapon_perks") ~= false
-		local weapon_perk_ranks_enabled = weapon_perks_enabled and mod:get("show_weapon_perk_rank_symbols") ~= false
-		local weapon_blessing_mode = mod:get("weapon_blessing_display_mode") or "ranked_text"
-		local weapon_blessing_icons_enabled = weapon_blessing_mode == "icons"
-		local weapon_blessing_ranked_text_enabled = weapon_blessing_mode == "ranked_text"
-		local weapon_blessing_text_enabled = weapon_blessing_mode == "text" or weapon_blessing_ranked_text_enabled
-		local weapon_blessings_enabled = weapon_blessing_mode ~= "off"
-		local single_column_blessing_icons_enabled = single_column_enabled and weapon_blessing_text_enabled and mod:get("single_column_blessing_icons_on_right") ~= false
-		local blessing_icon_controls_enabled = weapon_blessing_icons_enabled or single_column_blessing_icons_enabled
-		local blessing_icon_controls_reason = single_column_enabled and weapon_blessing_text_enabled and mod:localize("option_requires_single_column_blessing_icons") or mod:localize("option_requires_weapon_blessings")
-		local weapon_rank_symbols_enabled = weapon_perk_ranks_enabled or weapon_blessing_ranked_text_enabled
-		local weapon_perk_blessing_sections_enabled = weapon_perks_enabled and weapon_blessings_enabled
-		local detailed_curio_profile = (mod:get("curio_display_profile") or "detailed") == "detailed"
-		local weapon_rarity_rating_enabled = mod:get("weapon_rarity_rating_mode") ~= "off" or mod:get("character_overview_weapon_rarity_rating_mode") ~= "off"
-		local curio_rarity_rating_enabled = mod:get("curio_rarity_rating_mode") ~= "off" or mod:get("character_overview_curio_rarity_rating_mode") ~= "off"
-		local wkc_zero_kills_enabled = mod:get("weapon_kill_counter_show_zero_kills") ~= false
-		local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
-		local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
-		local automatic_curio_enabled = mod:get("enable_automatic_curio_acquisition") == true
-		local automatic_curio_reason = mod:localize("option_requires_automatic_curio_acquisition")
-		local automatic_curio_character_mode = mod:get("automatic_curio_target_mode") ~= "classes"
-		local automatic_curio_classes_enabled = automatic_curio_enabled and not automatic_curio_character_mode
-		local automatic_curio_characters_enabled = automatic_curio_enabled and automatic_curio_character_mode
-		local automatic_curio_classes_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_classes_mode") or automatic_curio_reason
-		local automatic_curio_characters_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_characters_mode") or automatic_curio_reason
-		local lantern_installed = get_mod("Lantern of the Omnissiah") ~= nil
-		local lantern_reason = mod:localize("option_requires_lantern_of_the_omnissiah")
-		local myfavorites_available = FavoriteIntegration and type(FavoriteIntegration.is_myfavorites_available) == "function" and FavoriteIntegration.is_myfavorites_available()
-		local myfavorites_reason = mod:localize("option_requires_myfavorites")
-		local quick_look_card_grid_enabled = grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
-		local quick_look_card_grid_reason = grid_enabled and mod:localize("option_requires_quick_look_card_grid_integration") or native_reason
-		local quick_look_card_single_column_enabled = single_column_enabled and mod:get("enable_quick_look_card_single_column_integration") ~= false
-		local quick_look_card_single_column_reason = single_column_enabled and mod:localize("option_requires_quick_look_card_single_column_integration") or single_column_reason
-		local weapon_modifier_lowest_color_enabled = quick_look_card_grid_enabled or quick_look_card_single_column_enabled
-		local weapon_modifier_lowest_color_reason = grid_enabled and quick_look_card_grid_reason or quick_look_card_single_column_reason
-		local quick_look_card_above_power = quick_look_card_grid_enabled and mod:get("quick_look_card_grid_stat_position") ~= "name_left" and mod:get("quick_look_card_grid_stat_position") ~= "name_right"
-		local quick_look_card_bottom_padding_reason = quick_look_card_grid_enabled and mod:localize("option_requires_quick_look_card_above_power") or quick_look_card_grid_reason
-		set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
-		set_option_enabled(option_dependency_entries.weapon_extra_width_column_threshold, window_expansion_enabled, expansion_reason)
-		set_option_enabled(option_dependency_entries.five_column_weapon_extra_width, weapon_extra_width_enabled, weapon_extra_width_reason)
-		set_option_enabled(option_dependency_entries.curio_target_card_width, curio_expansion_enabled, curio_target_reason)
-		set_option_enabled(option_dependency_entries.expand_armoury_requisition_window, armoury_grid_enabled, armoury_reason)
-		set_option_enabled(option_dependency_entries.enable_armoury_requisition_sorting_panel, armoury_grid_enabled, armoury_reason)
-		set_option_enabled(option_dependency_entries.brighten_armoury_item_levels, armoury_grid_enabled, armoury_reason)
-		set_option_enabled(option_dependency_entries.three_column_weapon_name_font_size, armoury_grid_enabled, armoury_reason)
-		set_option_enabled(option_dependency_entries.armoury_requisition_target_card_width, armoury_expansion_enabled, armoury_target_reason)
-		set_option_enabled(option_dependency_entries.enable_melk_limited_grid, grid_enabled, native_reason)
-		local global_store_integration_reason = grid_enabled and mod:localize("option_requires_global_store_integration") or native_reason
-		local global_store_reason = global_store_integration_enabled and grid_enabled and mod:localize("option_requires_global_store_grid") or global_store_integration_reason
-		set_option_enabled(option_dependency_entries.enable_global_store_integration, true)
-		set_option_enabled(option_dependency_entries.enable_global_store_grid, global_store_integration_enabled and grid_enabled, global_store_integration_reason)
-		set_option_enabled(option_dependency_entries.enable_melk_multi_operative_grid, global_store_integration_enabled and grid_enabled, global_store_integration_reason)
-		set_option_enabled(option_dependency_entries.enable_global_store_sorting_panel, global_store_integration_enabled and global_store_grid_enabled, global_store_reason)
-		local global_store_layout_enabled = global_store_integration_enabled and (global_store_grid_enabled or global_store_native_enabled)
-		set_option_enabled(option_dependency_entries.global_store_character_photo_size_percent, global_store_layout_enabled, global_store_reason)
-		set_option_enabled(option_dependency_entries.global_store_price_row_padding, global_store_layout_enabled, global_store_reason)
-		set_option_enabled(option_dependency_entries.global_store_character_info_gap, global_store_layout_enabled, global_store_reason)
-		set_option_enabled(option_dependency_entries.global_store_character_class_icon_size, global_store_layout_enabled, global_store_reason)
-		set_option_enabled(option_dependency_entries.global_store_character_name_font_size, global_store_layout_enabled, global_store_reason)
-		set_option_enabled(option_dependency_entries.global_store_compact_character_names, global_store_layout_enabled, global_store_reason)
-		set_option_enabled(option_dependency_entries.global_store_single_column_modifier_horizontal_position, global_store_native_enabled, global_store_integration_reason)
-		set_option_enabled(option_dependency_entries.global_store_single_column_modifier_vertical_position, global_store_native_enabled, global_store_integration_reason)
-		local character_overview_curio_enabled = mod:get("enable_character_overview_curio_details") ~= false
-		local character_overview_melee_enabled = mod:get("enable_character_overview_melee_mirror") ~= false
-		local character_overview_ranged_enabled = mod:get("enable_character_overview_ranged_mirror") ~= false
-		local character_overview_weapon_enabled = (character_overview_melee_enabled or character_overview_ranged_enabled) and mod:get("enable_quick_look_card_single_column_integration") ~= false
-		local character_overview_dump_stat_enabled, character_overview_dump_stat_reason = character_overview_dump_stat_style_state()
-		set_option_enabled(option_dependency_entries.character_overview_weapon_rarity_rating_mode, character_overview_melee_enabled or character_overview_ranged_enabled, mod:localize("option_requires_character_overview_weapon_mirror"))
-		set_option_enabled(option_dependency_entries.character_overview_curio_rarity_rating_mode, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
-		set_option_enabled(option_dependency_entries.character_overview_show_melee_rarity_strip, character_overview_melee_enabled, mod:localize("option_requires_character_overview_melee_mirror"))
-		set_option_enabled(option_dependency_entries.character_overview_show_ranged_rarity_strip, character_overview_ranged_enabled, mod:localize("option_requires_character_overview_ranged_mirror"))
-		set_option_enabled(option_dependency_entries.character_overview_blessing_name_mode, character_overview_weapon_enabled and weapon_blessing_text_enabled, not character_overview_weapon_enabled and mod:localize("option_requires_character_overview_weapon_mirror") or mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.character_overview_show_only_dump_stat, character_overview_weapon_enabled, mod:localize("option_requires_character_overview_weapon_mirror"))
-		set_option_enabled(option_dependency_entries.character_overview_dump_stat_horizontal_offset, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
-		set_option_enabled(option_dependency_entries.character_overview_dump_stat_font_scale_percent, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
-		set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_preset, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
-		set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_r, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
-		set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_g, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
-		set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_b, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
-		set_option_enabled(option_dependency_entries.character_overview_show_curio_rarity_strip, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
-		set_option_enabled(option_dependency_entries.character_overview_curio_name_mode, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
-		set_option_enabled(option_dependency_entries.character_overview_curio_font_size_percent, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
-		set_option_enabled(option_dependency_entries.character_overview_use_native_curio_overlay, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
-		set_option_enabled(option_dependency_entries.weapon_perk_compression, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
-		set_option_enabled(option_dependency_entries.show_weapon_perk_rank_symbols, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
-		set_option_enabled(option_dependency_entries.weapon_perk_rank_icon_size, weapon_rank_symbols_enabled, mod:localize("option_requires_rank_symbols"))
-		set_option_enabled(option_dependency_entries.remove_weapon_perk_plus_signs, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
-		set_option_enabled(option_dependency_entries.weapon_perk_text_color_preset, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
-		set_option_enabled(option_dependency_entries.weapon_perk_text_color_r, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
-		set_option_enabled(option_dependency_entries.weapon_perk_text_color_g, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
-		set_option_enabled(option_dependency_entries.weapon_perk_text_color_b, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
-		set_option_enabled(option_dependency_entries.weapon_perk_text_opacity, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
-		set_option_enabled(option_dependency_entries.weapon_perk_vertical_spacing, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
+		apply_dependency_rules(option_dependency_entries, nil, s)
 		refresh_highlight_option_dependencies(option_dependency_entries)
-		set_option_enabled(option_dependency_entries.blessing_text_item_level_separation, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.auto_fit_long_blessing_names, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.truncate_long_blessing_names, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.weapon_blessing_text_color_preset, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.weapon_blessing_text_color_r, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.weapon_blessing_text_color_g, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.weapon_blessing_text_color_b, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.weapon_blessing_text_opacity, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.weapon_blessing_text_vertical_spacing, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.weapon_blessing_text_bottom_padding, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.blessing_icon_size, blessing_icon_controls_enabled, blessing_icon_controls_reason)
-		set_option_enabled(option_dependency_entries.blessing_icon_spacing, blessing_icon_controls_enabled, blessing_icon_controls_reason)
-		set_option_enabled(option_dependency_entries.weapon_perk_blessing_spacing, weapon_perk_blessing_sections_enabled, mod:localize("option_requires_perk_and_blessing_sections"))
-		set_option_enabled(option_dependency_entries.curio_secondary_stat_font_size, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
-		set_option_enabled(option_dependency_entries.curio_primary_secondary_spacing, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
-		set_option_enabled(option_dependency_entries.weapon_rarity_rating_use_card_background_color, weapon_rarity_rating_enabled, mod:localize("option_requires_weapon_rarity_rating"))
-		set_option_enabled(option_dependency_entries.weapon_rarity_rating_opacity, weapon_rarity_rating_enabled, mod:localize("option_requires_weapon_rarity_rating"))
-		set_option_enabled(option_dependency_entries.curio_rarity_rating_use_card_background_color, curio_rarity_rating_enabled, mod:localize("option_requires_curio_rarity_rating"))
-		set_option_enabled(option_dependency_entries.curio_rarity_rating_opacity, curio_rarity_rating_enabled, mod:localize("option_requires_curio_rarity_rating"))
-		set_option_enabled(option_dependency_entries.weapon_kill_counter_show_zero_kills_in_stores, wkc_zero_kills_enabled, mod:localize("option_requires_weapon_kill_counter_zero_kills"))
-		set_option_enabled(option_dependency_entries.single_column_layout_group, single_column_enabled, single_column_reason)
-		set_option_enabled(option_dependency_entries.single_column_weapon_name_font_size, single_column_enabled, single_column_reason)
-		set_option_enabled(option_dependency_entries.single_column_blessing_icons_on_right, single_column_enabled and weapon_blessing_text_enabled, not single_column_enabled and single_column_reason or mod:localize("option_requires_weapon_blessing_text"))
-		set_option_enabled(option_dependency_entries.quick_look_card_single_column_font_size, quick_look_card_single_column_enabled, quick_look_card_single_column_reason)
-		set_option_enabled(option_dependency_entries.quick_look_card_single_column_label_value_gap, quick_look_card_single_column_enabled, quick_look_card_single_column_reason)
-		set_option_enabled(option_dependency_entries.quick_look_card_single_column_horizontal_position, quick_look_card_single_column_enabled, quick_look_card_single_column_reason)
-		set_option_enabled(option_dependency_entries.quick_look_card_single_column_vertical_position, quick_look_card_single_column_enabled, quick_look_card_single_column_reason)
-		set_option_enabled(option_dependency_entries.quick_look_card_grid_stat_position, quick_look_card_grid_enabled, quick_look_card_grid_reason)
-		set_option_enabled(option_dependency_entries.quick_look_card_grid_font_size, quick_look_card_grid_enabled, quick_look_card_grid_reason)
-		set_option_enabled(option_dependency_entries.quick_look_card_grid_bottom_padding, quick_look_card_above_power, quick_look_card_bottom_padding_reason)
-		set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_preset, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
-		set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_r, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
-		set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_g, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
-		set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_b, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
-		set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_opacity, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
-		set_option_enabled(option_dependency_entries.name_it_force_curio_name_in_detailed_mode, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
-		set_option_enabled(option_dependency_entries.curio_content_name_it_curio_name, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
-		local custom_item_colors_enabled = mod:get("enable_custom_item_name_and_colors") ~= false
-		local custom_item_colors_reason = mod:localize("option_requires_custom_item_name_and_colors")
 
-		set_option_enabled(option_dependency_entries.enable_custom_item_name_and_colors, true)
-		set_option_enabled(option_dependency_entries.custom_item_name_keybind, custom_item_colors_enabled, custom_item_colors_reason)
-		set_option_enabled(option_dependency_entries.custom_item_name_color_keybind, custom_item_colors_enabled, custom_item_colors_reason)
-		set_option_enabled(option_dependency_entries.custom_item_background_color_keybind, custom_item_colors_enabled, custom_item_colors_reason)
-		set_option_enabled(option_dependency_entries.custom_item_skip_confirmation_prompts, custom_item_colors_enabled, custom_item_colors_reason)
-		set_option_enabled(option_dependency_entries.custom_item_preserve_card_shading, custom_item_colors_enabled, custom_item_colors_reason)
-		set_option_enabled(option_dependency_entries.custom_item_override_weapon_information_color, custom_item_colors_enabled, custom_item_colors_reason)
-		set_option_enabled(option_dependency_entries.custom_item_override_weapon_rarity_keyword_color, custom_item_colors_enabled, custom_item_colors_reason)
-		set_option_enabled(option_dependency_entries.custom_item_override_weapon_information_name_color, custom_item_colors_enabled, custom_item_colors_reason)
-
-		local auto_crafter_mastery_enabled = mod:get("auto_crafter_level_mastery_20") ~= false
-		local auto_crafter_perks_enabled = auto_crafter_mastery_enabled and mod:get("auto_crafter_change_perks") ~= false
-		local auto_crafter_allocate_enabled = auto_crafter_mastery_enabled and mod:get("auto_crafter_allocate_mastery_points") ~= false
-		local auto_crafter_blessings_enabled = auto_crafter_allocate_enabled and mod:get("auto_crafter_change_blessings") ~= false
-		local mastery_reason = mod:localize("option_requires_auto_crafter_mastery_20")
-
-		set_option_enabled(option_dependency_entries.auto_crafter_defer_bad_weapon_processing, auto_crafter_mastery_enabled, mastery_reason)
-		local reuse_inventory_base = mod:get("auto_crafter_reuse_inventory_base") ~= false
-		set_option_enabled(option_dependency_entries.auto_crafter_include_favorite_inventory_bases, reuse_inventory_base, mod:localize("option_requires_auto_crafter_inventory_reuse"))
-		set_option_enabled(option_dependency_entries.auto_crafter_allocate_mastery_points, auto_crafter_mastery_enabled, mastery_reason)
-		set_option_enabled(option_dependency_entries.auto_crafter_change_perks, auto_crafter_mastery_enabled, mastery_reason)
-		set_option_enabled(option_dependency_entries.auto_crafter_change_blessings, auto_crafter_mastery_enabled, mastery_reason)
-		set_option_enabled(option_dependency_entries.auto_crafter_perk_1_target, auto_crafter_perks_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_change_perks") or mastery_reason)
-		set_option_enabled(option_dependency_entries.auto_crafter_perk_2_target, auto_crafter_perks_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_change_perks") or mastery_reason)
-		set_option_enabled(option_dependency_entries.auto_crafter_show_perk_grid, auto_crafter_perks_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_change_perks") or mastery_reason)
-		set_option_enabled(option_dependency_entries.auto_crafter_blessing_1_target, auto_crafter_blessings_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_blessing_workflow") or mastery_reason)
-		set_option_enabled(option_dependency_entries.auto_crafter_blessing_2_target, auto_crafter_blessings_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_blessing_workflow") or mastery_reason)
-		set_option_enabled(option_dependency_entries.auto_crafter_show_blessing_grid, auto_crafter_blessings_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_blessing_workflow") or mastery_reason)
-		set_option_enabled(option_dependency_entries.auto_crafter_myfavorites_color, myfavorites_available and mod:get("auto_crafter_favorite_result") ~= false, myfavorites_available and mod:localize("option_requires_auto_crafter_myfavorites_color") or myfavorites_reason)
-
-		for _, setting_id in ipairs({
-			"inventory_options_controller_focus_keybind",
-			"curio_information_width_percent",
-			"curio_preview_height_percent",
-			"inventory_options_panel_width",
-			"inventory_options_panel_max_height",
-			"inventory_options_panel_row_spacing",
-			"inventory_options_panel_padding_top",
-			"inventory_options_panel_padding_bottom",
-			"inventory_options_panel_padding_left",
-			"inventory_options_panel_padding_right",
-		}) do
-			set_option_enabled(option_dependency_entries[setting_id], true)
-		end
-
-		set_option_enabled(option_dependency_entries.enable_lantern_inventory_section, lantern_installed, lantern_reason)
-		set_option_enabled(option_dependency_entries.keep_lantern_curio_panel_separate, lantern_installed and mod:get("enable_lantern_inventory_section") ~= false, lantern_reason)
-
-		for _, setting_id in ipairs({
-			"quick_discard_mode",
-			"quick_discard_rarity",
-			"quick_discard_max_item_level",
-			"quick_discard_protect_above_equipped_level",
-			"quick_discard_include_melee",
-			"quick_discard_include_ranged",
-			"quick_discard_include_curios",
-			"quick_discard_protect_perfect_weapons",
-			"quick_discard_protect_health_roll_curios",
-			"quick_discard_protect_toughness_roll_curios",
-			"quick_discard_protect_high_level_curios",
-			"quick_discard_keep_health_curios",
-			"quick_discard_keep_toughness_curios",
-			"quick_discard_keep_wound_curios",
-			"quick_discard_keep_stamina_curios",
-			"quick_discard_show_type_breakdown",
-			"quick_discard_show_summary_notification",
-		}) do
-			set_option_enabled(option_dependency_entries[setting_id], quick_discard_enabled, quick_discard_reason)
-		end
-
-		local automatic_discard_enabled = quick_discard_enabled and mod:get("quick_discard_mode") == "automatic"
-		local automatic_discard_reason = quick_discard_enabled and mod:localize("option_requires_automatic_discard_mode") or quick_discard_reason
-
-		set_option_enabled(option_dependency_entries.quick_discard_skip_automatic_confirmation, automatic_discard_enabled, automatic_discard_reason)
-		set_option_enabled(option_dependency_entries.quick_discard_disable_no_eligible_notification, automatic_discard_enabled, automatic_discard_reason)
-
-		local curio_protection_enabled = quick_discard_enabled and mod:get("quick_discard_protect_high_level_curios") ~= false
-		local health_roll_protection_enabled = quick_discard_enabled and mod:get("quick_discard_protect_health_roll_curios") == true
-		local toughness_roll_protection_enabled = quick_discard_enabled and mod:get("quick_discard_protect_toughness_roll_curios") == true
-
-		set_option_enabled(option_dependency_entries.quick_discard_curio_protection_level, curio_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_discard_protection") or quick_discard_reason)
-		set_option_enabled(option_dependency_entries.quick_discard_curio_health_roll, health_roll_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_health_roll_protection") or quick_discard_reason)
-		set_option_enabled(option_dependency_entries.quick_discard_curio_toughness_roll, toughness_roll_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_toughness_roll_protection") or quick_discard_reason)
-
-		for _, setting_id in ipairs(AUTOMATIC_CURIO_SETTING_IDS) do
-			set_option_enabled(option_dependency_entries[setting_id], automatic_curio_enabled, automatic_curio_reason)
-		end
-
-		set_option_enabled(option_dependency_entries.automatic_curio_classes_group, automatic_curio_classes_enabled, automatic_curio_classes_reason)
-		set_option_enabled(option_dependency_entries.automatic_curio_characters_group, automatic_curio_characters_enabled, automatic_curio_characters_reason)
-
-		for _, setting_id in ipairs({
-			"automatic_curio_class_veteran",
-			"automatic_curio_class_zealot",
-			"automatic_curio_class_psyker",
-			"automatic_curio_class_ogryn",
-			"automatic_curio_class_adamant",
-			"automatic_curio_class_broker",
-			"automatic_curio_class_cryptic",
-		}) do
-			set_option_enabled(option_dependency_entries[setting_id], automatic_curio_classes_enabled, automatic_curio_classes_reason)
-		end
+		-- The two group headers are bound by title in bind_option_dependencies,
+		-- not by setting id, so they are not listed in OPTION_DEPENDENCY_RULES.
+		set_option_enabled(option_dependency_entries.automatic_curio_classes_group, s.automatic_curio_classes_enabled, s.automatic_curio_classes_reason)
+		set_option_enabled(option_dependency_entries.automatic_curio_characters_group, s.automatic_curio_characters_enabled, s.automatic_curio_characters_reason)
 
 		for _, entry in ipairs(option_dependency_entries.automatic_curio_character_entries or {}) do
 			local slot_available = entry._better_inventory_curio_character_available == true
-			local slot_reason = slot_available and automatic_curio_characters_reason or mod:localize("automatic_curio_character_slot_empty_reason")
+			local slot_reason = slot_available and s.automatic_curio_characters_reason or mod:localize("automatic_curio_character_slot_empty_reason")
 
-			set_option_enabled(entry, automatic_curio_characters_enabled and slot_available, slot_reason)
+			set_option_enabled(entry, s.automatic_curio_characters_enabled and slot_available, slot_reason)
 		end
-
-		local automatic_health_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_health") ~= false
-		local automatic_toughness_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_toughness") ~= false
-		local automatic_stamina_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_stamina") == true
-
-		set_option_enabled(option_dependency_entries.automatic_curio_min_health, automatic_health_enabled, automatic_curio_enabled and mod:localize("option_requires_automatic_curio_health") or automatic_curio_reason)
-		set_option_enabled(option_dependency_entries.automatic_curio_min_toughness, automatic_toughness_enabled, automatic_curio_enabled and mod:localize("option_requires_automatic_curio_toughness") or automatic_curio_reason)
-		set_option_enabled(option_dependency_entries.automatic_curio_min_stamina, automatic_stamina_enabled, automatic_curio_enabled and mod:localize("option_requires_automatic_curio_stamina") or automatic_curio_reason)
 	end
 
 	local function bind_option_dependencies(options_templates)
@@ -649,179 +890,7 @@ function OptionDependencies.create(context)
 		local class_group_entry
 		local character_group_entry
 
-		local tracked_ids = {
-			"melee_columns",
-			"ranged_columns",
-			"curio_columns",
-			"three_column_weapon_name_font_size",
-			"expand_inventory_window",
-			"weapon_extra_width_column_threshold",
-			"five_column_weapon_extra_width",
-			"grid_spacing",
-			"automatic_card_height",
-			"card_height",
-			"weapon_rarity_rating_mode",
-			"curio_rarity_rating_mode",
-			"weapon_rarity_rating_use_card_background_color",
-			"weapon_rarity_rating_opacity",
-			"curio_rarity_rating_use_card_background_color",
-			"curio_rarity_rating_opacity",
-			"weapon_kill_counter_show_zero_kills_in_stores",
-			"expand_curio_inventory_window",
-			"curio_target_card_width",
-			"enable_hadron_entreat_grid",
-			"enable_hadron_single_column_mirror",
-			"enable_armoury_requisition_grid",
-			"enable_melk_limited_grid",
-			"enable_melk_multi_operative_grid",
-			"enable_armoury_single_column_mirror",
-			"enable_armoury_requisition_sorting_panel",
-			"brighten_armoury_item_levels",
-			"expand_armoury_requisition_window",
-			"armoury_requisition_target_card_width",
-			"enable_global_store_integration",
-			"enable_global_store_grid",
-			"enable_global_store_sorting_panel",
-			"global_store_character_photo_size_percent",
-			"global_store_price_row_padding",
-			"global_store_character_info_gap",
-			"global_store_character_class_icon_size",
-			"global_store_character_name_font_size",
-			"global_store_compact_character_names",
-			"global_store_single_column_modifier_horizontal_position",
-			"global_store_single_column_modifier_vertical_position",
-			"character_overview_show_melee_rarity_strip",
-			"character_overview_show_ranged_rarity_strip",
-			"character_overview_blessing_name_mode",
-			"character_overview_weapon_rarity_rating_mode",
-			"character_overview_curio_rarity_rating_mode",
-			"character_overview_show_only_dump_stat",
-			"character_overview_dump_stat_horizontal_offset",
-			"character_overview_dump_stat_font_scale_percent",
-			"character_overview_dump_stat_color_preset",
-			"character_overview_dump_stat_color_r",
-			"character_overview_dump_stat_color_g",
-			"character_overview_dump_stat_color_b",
-			"character_overview_show_curio_rarity_strip",
-			"character_overview_use_native_curio_overlay",
-			"character_overview_curio_name_mode",
-			"character_overview_curio_font_size_percent",
-			"weapon_perk_compression",
-			"show_weapon_perk_rank_symbols",
-			"weapon_perk_rank_icon_size",
-			"remove_weapon_perk_plus_signs",
-			"weapon_perk_text_color_preset",
-			"weapon_perk_text_color_r",
-			"weapon_perk_text_color_g",
-			"weapon_perk_text_color_b",
-			"weapon_perk_text_opacity",
-			"weapon_perk_vertical_spacing",
-			"highlight_equipped_items",
-			"equipped_highlight_color_preset",
-			"equipped_highlight_color_r",
-			"equipped_highlight_color_g",
-			"equipped_highlight_color_b",
-			"equipped_highlight_glow_intensity",
-			"equipped_highlight_animated_border_width",
-			"equipped_highlight_solid_border_width",
-			"new_item_highlight_mode",
-			"new_item_highlight_color_preset",
-			"new_item_highlight_color_r",
-			"new_item_highlight_color_g",
-			"new_item_highlight_color_b",
-			"new_item_highlight_glow_intensity",
-			"new_item_highlight_animated_border_width",
-			"new_item_highlight_solid_border_width",
-			"blessing_text_item_level_separation",
-			"auto_fit_long_blessing_names",
-			"truncate_long_blessing_names",
-			"weapon_blessing_text_color_preset",
-			"weapon_blessing_text_color_r",
-			"weapon_blessing_text_color_g",
-			"weapon_blessing_text_color_b",
-			"weapon_blessing_text_opacity",
-			"weapon_blessing_text_vertical_spacing",
-			"weapon_blessing_text_bottom_padding",
-			"blessing_icon_size",
-			"blessing_icon_spacing",
-			"weapon_perk_blessing_spacing",
-			"curio_secondary_stat_font_size",
-			"curio_primary_secondary_spacing",
-			"single_column_layout_group",
-			"single_column_weapon_name_font_size",
-			"single_column_blessing_icons_on_right",
-			"quick_look_card_single_column_font_size",
-			"quick_look_card_single_column_label_value_gap",
-			"quick_look_card_single_column_horizontal_position",
-			"quick_look_card_single_column_vertical_position",
-			"quick_look_card_grid_stat_position",
-			"quick_look_card_grid_font_size",
-			"quick_look_card_grid_bottom_padding",
-			"weapon_modifier_lowest_color_preset",
-			"weapon_modifier_lowest_color_r",
-			"weapon_modifier_lowest_color_g",
-			"weapon_modifier_lowest_color_b",
-			"weapon_modifier_lowest_color_opacity",
-			"name_it_force_curio_name_in_detailed_mode",
-			"curio_content_name_it_curio_name",
-			"enable_custom_item_name_and_colors",
-			"custom_item_name_keybind",
-			"custom_item_name_color_keybind",
-			"custom_item_background_color_keybind",
-			"custom_item_skip_confirmation_prompts",
-			"custom_item_preserve_card_shading",
-			"custom_item_override_weapon_information_color",
-			"custom_item_override_weapon_rarity_keyword_color",
-			"custom_item_override_weapon_information_name_color",
-			"inventory_options_controller_focus_keybind",
-			"curio_information_width_percent",
-			"curio_preview_height_percent",
-			"enable_lantern_inventory_section",
-			"keep_lantern_curio_panel_separate",
-			"inventory_options_panel_width",
-			"inventory_options_panel_max_height",
-			"inventory_options_panel_row_spacing",
-			"inventory_options_panel_padding_top",
-			"inventory_options_panel_padding_bottom",
-			"inventory_options_panel_padding_left",
-			"inventory_options_panel_padding_right",
-			"quick_discard_mode",
-			"quick_discard_skip_automatic_confirmation",
-			"quick_discard_rarity",
-			"quick_discard_max_item_level",
-			"quick_discard_protect_above_equipped_level",
-			"quick_discard_include_melee",
-			"quick_discard_include_ranged",
-			"quick_discard_include_curios",
-			"quick_discard_protect_perfect_weapons",
-			"quick_discard_protect_health_roll_curios",
-			"quick_discard_curio_health_roll",
-			"quick_discard_protect_toughness_roll_curios",
-			"quick_discard_curio_toughness_roll",
-			"quick_discard_protect_high_level_curios",
-			"quick_discard_curio_protection_level",
-			"quick_discard_keep_health_curios",
-			"quick_discard_keep_toughness_curios",
-			"quick_discard_keep_wound_curios",
-			"quick_discard_keep_stamina_curios",
-			"quick_discard_show_type_breakdown",
-			"quick_discard_show_summary_notification",
-			"quick_discard_disable_no_eligible_notification",
-			"automatic_curio_class_veteran",
-			"automatic_curio_class_zealot",
-			"automatic_curio_class_psyker",
-			"automatic_curio_class_ogryn",
-			"automatic_curio_class_adamant",
-			"automatic_curio_class_broker",
-			"automatic_curio_class_cryptic",
-			"auto_crafter_myfavorites_color",
-		}
-
-		for _, setting_id in ipairs(AUTOMATIC_CURIO_SETTING_IDS) do
-			tracked_ids[#tracked_ids + 1] = setting_id
-		end
-
-		for _, setting_id in ipairs(tracked_ids) do
+		for _, setting_id in ipairs(TRACKED_SETTING_IDS) do
 			tracked_setting_ids[setting_id] = true
 			local title = mod:localize(setting_id)
 			local existing = setting_by_title[title]
@@ -899,6 +968,8 @@ function OptionDependencies.create(context)
 		apply_color_preset = apply_color_preset,
 		refresh_option_dependencies = refresh_option_dependencies,
 		bind_option_dependencies = bind_option_dependencies,
+		OPTION_DEPENDENCY_RULES = OPTION_DEPENDENCY_RULES,
+		TRACKED_SETTING_IDS = TRACKED_SETTING_IDS,
 	}
 end
 

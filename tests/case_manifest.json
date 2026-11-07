@@ -332,6 +332,10 @@
   "test_curio_consecration.py": [
     {"name": "persistent_fifo_consecration_and_native_write_boundaries", "risk": "critical", "start_line": 1, "end_line": 207}
   ],
+  "test_option_dependencies.py": [
+    {"name": "auto_crafter_rows_bind_and_grey", "risk": "high", "start_line": 1, "end_line": 99},
+    {"name": "rule_table_is_the_single_bound_list", "risk": "high", "start_line": 100, "end_line": 141}
+  ],
   "test_default_drift_guard.py": [
     {"name": "literal_id_fallbacks_match_data_lua_defaults", "risk": "high", "start_line": 1, "end_line": 100}
   ]
