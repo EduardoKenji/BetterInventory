@@ -1101,6 +1101,33 @@ def main() -> None:
         "ordinary_weapon",
     )
 
+    # Unset (first load) prioritizes perfect rolls, like the data.lua default.
+    mod.settings.prioritize_perfect_roll_weapons = None
+    unset_perfect_first = lua.execute(
+        "local view, ordinary, perfect = ...; return view._sort_options[1].sort_function(perfect, ordinary)",
+        sortable_view,
+        lua.table_from(
+            {"item": lua.table_from({"gear_id": "ordinary_weapon", "item_type": "WEAPON_MELEE", "rating": 100})}
+        ),
+        lua.table_from(
+            {
+                "item": lua.table_from(
+                    {
+                        "gear_id": "perfect_60",
+                        "item_type": "WEAPON_MELEE",
+                        "rating": 1,
+                        "total_stats": 380,
+                        "base_stats": lua.table_from(
+                            [lua.table_from({"value": value}) for value in (0.8, 0.8, 0.8, 0.8, 0.6)]
+                        ),
+                    }
+                )
+            }
+        ),
+    )
+    assert unset_perfect_first is True
+    mod.settings.prioritize_perfect_roll_weapons = True
+
     # Comparator-side integration calls scale linearly with inventory size.
     # table.sort compares entries O(n log n) times, but each entry's protected
     # equipped/favorite/perfect-roll priority is resolved once per generation.
@@ -1426,6 +1453,14 @@ def main() -> None:
     assert globals_.TestArmouryPanel.entries[1].initial_content.label == "inventory_sorting_inventory_label"
     assert globals_.TestArmouryPanel.entries[4].initial_content.label == "armoury_native_sorting_header"
     assert len(globals_.TestArmouryPanel.entries) == 5
+    # Unset settings (first load) show both priorities on, like data.lua.
+    assert globals_.TestArmouryPanel.entries[3].option_index == "priority_prioritize_perfect_roll_weapons"
+    saved_perfect_priority = mod.settings.prioritize_perfect_roll_weapons
+    mod.settings.prioritize_perfect_roll_weapons = None
+    unset_priority_widget = lua.table_from({"content": lua.table_from({})})
+    globals_.TestArmouryPanel.entries[3].refresh(unset_priority_widget)
+    assert unset_priority_widget.content.checked is True
+    mod.settings.prioritize_perfect_roll_weapons = saved_perfect_priority
     priority_passes = globals_.TestArmouryPanel.entries[2].pass_template
     assert priority_passes[2].style.offset[1] == 8
     assert priority_passes[3].style.offset[1] == 8
@@ -2516,6 +2551,13 @@ def main() -> None:
     assert prototype_panel.input_disabled is False
 
     assert prototype_panel.widgets["better_inventory_perfect_sort_priority"] is not None
+    # Unset (first load) shows the perfect-roll priority on, like data.lua.
+    saved_perfect_priority = mod.settings.prioritize_perfect_roll_weapons
+    mod.settings.prioritize_perfect_roll_weapons = None
+    features.sync_inventory_sort_setting(mod, layout)
+    assert prototype_panel.widgets["better_inventory_perfect_sort_priority"].content.checked is True
+    mod.settings.prioritize_perfect_roll_weapons = saved_perfect_priority
+    features.sync_inventory_sort_setting(mod, layout)
     assert (
         prototype_panel.widgets[
             "better_inventory_discard_item_types_label"
@@ -2710,6 +2752,7 @@ def main() -> None:
         "better_inventory_curio_buyer_enable"
     ]
     assert curio_buyer_enable.content.checked is False
+    mod.settings.automatic_curio_target_mode = "classes"
     curio_buyer_enable.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.enable_automatic_curio_acquisition is True
@@ -2856,6 +2899,18 @@ def main() -> None:
     assert mod.settings.automatic_curio_target_mode == "classes"
     assert len(prototype_panel.layout) == 33
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is not None
+    # Unset (first load) is characters mode, like the data.lua default.
+    mod.settings.automatic_curio_target_mode = None
+    features.sync_inventory_sort_setting(mod, layout)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is None
+    assert (
+        prototype_panel.widgets["better_inventory_curio_buyer_target_mode"].content.value
+        == "automatic_curio_target_mode_characters  >"
+    )
+    mod.settings.automatic_curio_target_mode = "classes"
+    features.sync_inventory_sort_setting(mod, layout)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
     curio_buyer_enable = prototype_panel.widgets[
         "better_inventory_curio_buyer_enable"
     ]
@@ -3094,6 +3149,16 @@ def main() -> None:
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert prototype_view._better_inventory_lantern_panel_hosted is False
     assert prototype_panel.widgets["better_inventory_lantern_section"] is None
+
+    # Unset (first load) hosts the Lantern section, like the data.lua default.
+    mod.settings.enable_lantern_inventory_section = None
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is True
+    mod.settings.enable_lantern_inventory_section = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is False
     lantern_overlay.draw_weapon_select(prototype_view)
     assert globals_.lantern_native_draw_count == 3
 

@@ -242,7 +242,7 @@ Sorting.new_comparator_manager = function(dependencies)
 			end
 		end
 
-		if priority == 0 and mod:get("prioritize_perfect_roll_weapons") == true then
+		if priority == 0 and mod:get("prioritize_perfect_roll_weapons") ~= false then
 			local dump_stat_value = dependencies.perfect_roll_dump_stat_value(item)
 
 			if dump_stat_value then

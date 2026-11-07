@@ -90,10 +90,12 @@ local function item_mode(mod, item_kind, configuration)
 	item_kind = item_kind or configured_kind or "weapon"
 
 	local prefix = configuration and configuration.character_overview and "character_overview_" or ""
-	if prefix ~= "" and item_kind == "weapon" and setting(mod, prefix .. item_kind .. "_rarity_rating_mode") == "overview_vertical" then
+	local fallback = prefix ~= "" and item_kind == "weapon" and "overview_vertical" or MODE_FULL
+	local configured = setting(mod, prefix .. item_kind .. "_rarity_rating_mode", fallback)
+	if configured == "overview_vertical" and prefix ~= "" and item_kind == "weapon" then
 		return "overview_vertical"
 	end
-	return valid_mode(setting(mod, prefix .. item_kind .. "_rarity_rating_mode", MODE_OFF))
+	return valid_mode(configured)
 end
 
 local function mode(mod, configuration, explicit_item_kind)
@@ -225,7 +227,7 @@ local function resolved_rating_color(mod, widget, item, item_kind)
 		and "curio_rarity_rating_use_card_background_color"
 		or "weapon_rarity_rating_use_card_background_color"
 
-	if setting(mod, setting_id, false) == true then
+	if setting(mod, setting_id, true) == true then
 		local style = widget and widget.style
 
 		for index = 1, #CARD_BACKGROUND_STYLE_IDS do
@@ -299,7 +301,7 @@ RarityRating.populate = function(mod, widget, item, item_kind, configuration)
 	end
 
 	content.better_inventory_rarity_rating_visible = true
-	if setting(mod, item_kind .. "_rarity_rating_use_card_background_color", false) == true then
+	if setting(mod, item_kind .. "_rarity_rating_use_card_background_color", true) == true then
 		content.better_inventory_rarity_background_styles = widget.style
 	end
 	content[item_kind == "curio" and "better_inventory_curio_rarity_rating" or "better_inventory_weapon_rarity_rating"] = horizontal

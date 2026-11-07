@@ -365,6 +365,19 @@ def main() -> None:
         text_pass.change_function(widget.content, text_pass.style)
         assert tuple(text_pass.style.text_color[i] for i in range(1, 5)) == before
         assert widget.content.better_inventory_rarity_background_styles is None
+
+    # Unset settings (first load) resolve to the data.lua defaults.
+    for key in list(mod.settings.keys()):
+        mod.settings[key] = None
+    overview = lua.table_from({"character_overview": True})
+    assert rating.mode(mod, lua.table_from({})) == "full_horizontal"
+    assert rating.item_mode(mod, "curio", lua.table_from({})) == "full_horizontal"
+    assert rating.item_mode(mod, "weapon", overview) == "overview_vertical"
+    assert rating.item_mode(mod, "curio", overview) == "full_horizontal"
+    rating.populate(mod, compact_widget, transcendent, "weapon")
+    assert compact_widget.content.better_inventory_rarity_background_styles is not None
+    rating.populate(mod, curio_widget, transcendent, "curio")
+    assert curio_widget.content.better_inventory_rarity_background_styles is not None
     print("BetterInventory rarity-rating behavior tests passed.")
 
 

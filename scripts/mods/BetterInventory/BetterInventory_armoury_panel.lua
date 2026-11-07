@@ -150,7 +150,7 @@ end
 local function armoury_native_sort_priority_entry(mod, layout, view, setting_id, label)
 	return {
 		initial_content = {
-			checked = setting_id == "prioritize_equipped_favorites" and mod:get(setting_id) ~= false or mod:get(setting_id) == true,
+			checked = mod:get(setting_id) ~= false,
 			hotspot = {},
 			label = label,
 		},
@@ -169,7 +169,7 @@ local function armoury_native_sort_priority_entry(mod, layout, view, setting_id,
 			end
 		end,
 		refresh = function(widget)
-			widget.content.checked = setting_id == "prioritize_equipped_favorites" and mod:get(setting_id) ~= false or mod:get(setting_id) == true
+			widget.content.checked = mod:get(setting_id) ~= false
 		end,
 	}
 end

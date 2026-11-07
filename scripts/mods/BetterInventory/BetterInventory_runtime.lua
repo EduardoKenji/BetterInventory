@@ -30,6 +30,10 @@ local active_grid_view
 local active_grid_configuration
 local active_highlight_views
 local highlight_animation_enabled = false
+
+local function pulsing_highlight_selected()
+	return mod:get("highlight_equipped_items") == "pulsing_dashes" or (mod:get("new_item_highlight_mode") or "pulsing_dashes") == "pulsing_dashes"
+end
 local option_dependency_owner = {}
 local AUTOMATIC_CURIO_SETTING_IDS = {
 	"automatic_curio_scan_operative_selection", "automatic_curio_once_per_store_rotation",
@@ -430,7 +434,7 @@ end
 local function character_overview_dump_stat_style_state()
 	local weapon_enabled = (mod:get("enable_character_overview_melee_mirror") ~= false or mod:get("enable_character_overview_ranged_mirror") ~= false)
 		and mod:get("enable_quick_look_card_single_column_integration") ~= false
-	local enabled = weapon_enabled and mod:get("character_overview_show_only_dump_stat") == true
+	local enabled = weapon_enabled and mod:get("character_overview_show_only_dump_stat") ~= false
 	local reason = weapon_enabled and mod:localize("option_requires_character_overview_dump_stat_only") or mod:localize("option_requires_character_overview_weapon_mirror")
 
 	return enabled, reason
@@ -579,9 +583,9 @@ local function refresh_option_dependencies()
 	local armoury_expansion_enabled = armoury_grid_enabled and mod:get("expand_armoury_requisition_window") ~= false
 	local armoury_reason = grid_enabled and mod:localize("option_requires_armoury_grid") or native_reason
 	local armoury_target_reason = armoury_grid_enabled and mod:localize("option_requires_armoury_expansion") or armoury_reason
-	local weapon_perks_enabled = mod:get("show_weapon_perks") == true
-	local weapon_perk_ranks_enabled = weapon_perks_enabled and mod:get("show_weapon_perk_rank_symbols") == true
-	local weapon_blessing_mode = mod:get("weapon_blessing_display_mode")
+	local weapon_perks_enabled = mod:get("show_weapon_perks") ~= false
+	local weapon_perk_ranks_enabled = weapon_perks_enabled and mod:get("show_weapon_perk_rank_symbols") ~= false
+	local weapon_blessing_mode = mod:get("weapon_blessing_display_mode") or "ranked_text"
 	local weapon_blessing_icons_enabled = weapon_blessing_mode == "icons"
 	local weapon_blessing_ranked_text_enabled = weapon_blessing_mode == "ranked_text"
 	local weapon_blessing_text_enabled = weapon_blessing_mode == "text" or weapon_blessing_ranked_text_enabled
@@ -591,7 +595,7 @@ local function refresh_option_dependencies()
 	local blessing_icon_controls_reason = single_column_enabled and weapon_blessing_text_enabled and mod:localize("option_requires_single_column_blessing_icons") or mod:localize("option_requires_weapon_blessings")
 	local weapon_rank_symbols_enabled = weapon_perk_ranks_enabled or weapon_blessing_ranked_text_enabled
 	local weapon_perk_blessing_sections_enabled = weapon_perks_enabled and weapon_blessings_enabled
-	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
+	local detailed_curio_profile = (mod:get("curio_display_profile") or "detailed") == "detailed"
 	local weapon_rarity_rating_enabled = mod:get("weapon_rarity_rating_mode") ~= "off" or mod:get("character_overview_weapon_rarity_rating_mode") ~= "off"
 	local curio_rarity_rating_enabled = mod:get("curio_rarity_rating_mode") ~= "off" or mod:get("character_overview_curio_rarity_rating_mode") ~= "off"
 	local wkc_zero_kills_enabled = mod:get("weapon_kill_counter_show_zero_kills") ~= false
@@ -599,7 +603,7 @@ local function refresh_option_dependencies()
 	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
 	local automatic_curio_enabled = mod:get("enable_automatic_curio_acquisition") == true
 	local automatic_curio_reason = mod:localize("option_requires_automatic_curio_acquisition")
-	local automatic_curio_character_mode = mod:get("automatic_curio_target_mode") == "characters"
+	local automatic_curio_character_mode = mod:get("automatic_curio_target_mode") ~= "classes"
 	local automatic_curio_classes_enabled = automatic_curio_enabled and not automatic_curio_character_mode
 	local automatic_curio_characters_enabled = automatic_curio_enabled and automatic_curio_character_mode
 	local automatic_curio_classes_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_classes_mode") or automatic_curio_reason
@@ -723,10 +727,10 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.custom_item_override_weapon_rarity_keyword_color, custom_item_colors_enabled, custom_item_colors_reason)
 	set_option_enabled(option_dependency_entries.custom_item_override_weapon_information_name_color, custom_item_colors_enabled, custom_item_colors_reason)
 
-	local auto_crafter_mastery_enabled = mod:get("auto_crafter_level_mastery_20") == true
-	local auto_crafter_perks_enabled = auto_crafter_mastery_enabled and mod:get("auto_crafter_change_perks") == true
-	local auto_crafter_allocate_enabled = auto_crafter_mastery_enabled and mod:get("auto_crafter_allocate_mastery_points") == true
-	local auto_crafter_blessings_enabled = auto_crafter_allocate_enabled and mod:get("auto_crafter_change_blessings") == true
+	local auto_crafter_mastery_enabled = mod:get("auto_crafter_level_mastery_20") ~= false
+	local auto_crafter_perks_enabled = auto_crafter_mastery_enabled and mod:get("auto_crafter_change_perks") ~= false
+	local auto_crafter_allocate_enabled = auto_crafter_mastery_enabled and mod:get("auto_crafter_allocate_mastery_points") ~= false
+	local auto_crafter_blessings_enabled = auto_crafter_allocate_enabled and mod:get("auto_crafter_change_blessings") ~= false
 	local mastery_reason = mod:localize("option_requires_auto_crafter_mastery_20")
 
 	set_option_enabled(option_dependency_entries.auto_crafter_defer_bad_weapon_processing, auto_crafter_mastery_enabled, mastery_reason)
@@ -759,7 +763,7 @@ local function refresh_option_dependencies()
 	end
 
 	set_option_enabled(option_dependency_entries.enable_lantern_inventory_section, lantern_installed, lantern_reason)
-	set_option_enabled(option_dependency_entries.keep_lantern_curio_panel_separate, lantern_installed and mod:get("enable_lantern_inventory_section") == true, lantern_reason)
+	set_option_enabled(option_dependency_entries.keep_lantern_curio_panel_separate, lantern_installed and mod:get("enable_lantern_inventory_section") ~= false, lantern_reason)
 
 	for _, setting_id in ipairs({
 		"quick_discard_mode",
@@ -1250,7 +1254,7 @@ function mod.on_enabled()
 		apply_color_preset(COLOR_TARGETS[i])
 	end
 
-	highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
+	highlight_animation_enabled = pulsing_highlight_selected()
 
 	-- Refresh static operative rows before Mod Options can open.
 	if type(CurioAcquisition.refresh_character_options) == "function" then
@@ -1309,7 +1313,7 @@ function mod.on_setting_changed(setting_id)
 	end
 
 	if setting_id == "highlight_equipped_items" or setting_id == "new_item_highlight_mode" then
-		highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
+		highlight_animation_enabled = pulsing_highlight_selected()
 	end
 
 	if type(setting_id) == "string" and string.sub(setting_id, 1, #"auto_crafter_") == "auto_crafter_" and AutoCrafter and type(AutoCrafter.on_setting_changed) == "function" then
@@ -1363,7 +1367,7 @@ end
 
 function mod.on_settings_reset()
 	Features.sync_sort_option_visibility()
-	highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
+	highlight_animation_enabled = pulsing_highlight_selected()
 	invalidate_item_customization_tracking()
 
 	for index = 1, #COLOR_TARGETS do

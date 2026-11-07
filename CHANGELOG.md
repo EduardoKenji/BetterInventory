@@ -46,6 +46,9 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Item names: the rename editor pre-fills with the saved or default item name instead of the grid card's rewritten text (non-breaking spaces, `...` crop, appended mark), and name normalization turns non-breaking spaces into plain spaces, so confirming no longer saves a mangled name.
 - Name It handoff: re-enabling BetterInventory's name ownership only retags names Name It actually changed; names it returned unchanged keep their existing sub/primary target instead of being re-tagged from Name It's global replace-pattern flag.
 - Item names: a failure in BetterInventory's character-deletion cleanup is now caught and logged, so it can no longer abort the native character deletion hook.
+- Settings: code fallbacks used before a value is saved (first load) now match the data.lua defaults for the new-item highlight colour (green, not equipped-item gold), weapon perk/blessing text opacity (80%), rarity rating modes and card-background colour, Character Overview vertical rating, native Curio overlay and Curio name mode (two lines), perk/blessing/dump-stat display, the Games Lantern inventory section, the Curio buyer target mode (characters) and perfect-roll sort priority.
+- Settings: Mod Options greying for perk rank symbols, Curio display profile, Auto Crafter mastery/perk/blessing rows, the pulsing-dashes animation flag and the Auto Crafter status HUD now use the same unset defaults as the code they control.
+- Tests: a drift guard compares literal-ID `mod:get("id")` fallbacks in runtime Lua with data.lua defaults (dynamic IDs are not covered); the documented fail-closed Curio buyer scan gates are allowlisted.
 
 ## 3.7.4 - Unreleased
 

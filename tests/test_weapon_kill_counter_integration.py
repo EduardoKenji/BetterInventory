@@ -172,15 +172,13 @@ def main() -> None:
     assert single.vertical_alignment == "center"
     assert single.layer == 0
 
-    overview = integration.profile(
-        mod,
-        420,
-        15,
-        lua.table_from(
-            {"native_single_column": True, "character_overview": True}
-        ),
-        1,
+    overview_config = lua.table_from(
+        {"native_single_column": True, "character_overview": True}
     )
+    # Unset (first load) follows the data.lua default, overview_vertical (+20).
+    assert integration.profile(mod, 420, 15, overview_config, 1).left == -282
+    mod.settings.character_overview_weapon_rarity_rating_mode = "off"
+    overview = integration.profile(mod, 420, 15, overview_config, 1)
     assert overview.native is True
     assert overview.icon_size == 34
     assert overview.font_size == 24

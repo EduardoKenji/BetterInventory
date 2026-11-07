@@ -473,7 +473,7 @@ end
 
 local function panel_perfect_sort_entry(mod, layout, view)
 	return panel_entry(view, INVENTORY_PERFECT_SORT_TOGGLE_ID, 38, inventory_sort_toggle_passes(), {
-		checked = mod:get("prioritize_perfect_roll_weapons") == true,
+		checked = mod:get("prioritize_perfect_roll_weapons") ~= false,
 		label = mod:localize("prioritize_perfect_roll_weapons_inventory_label"),
 	}, function(widget)
 		widget.content.hotspot.pressed_callback = function()
@@ -481,7 +481,7 @@ local function panel_perfect_sort_entry(mod, layout, view)
 			Features.sync_inventory_sort_setting(mod, layout)
 		end
 	end, function(widget)
-		widget.content.checked = mod:get("prioritize_perfect_roll_weapons") == true
+		widget.content.checked = mod:get("prioritize_perfect_roll_weapons") ~= false
 	end, { "hotspot" })
 end
 
@@ -520,7 +520,7 @@ local function panel_curio_buyer_target_mode_entry(mod, layout, view)
 		value = "",
 	}, function(widget)
 		widget.content.hotspot.pressed_callback = function()
-			local mode = mod:get("automatic_curio_target_mode") == "characters" and "classes" or "characters"
+			local mode = mod:get("automatic_curio_target_mode") ~= "classes" and "classes" or "characters"
 
 			mod:set("automatic_curio_target_mode", mode, false)
 
@@ -535,7 +535,7 @@ local function panel_curio_buyer_target_mode_entry(mod, layout, view)
 			Features.sync_curio_acquisition_settings(mod, layout, view)
 		end
 	end, function(widget)
-		local mode = mod:get("automatic_curio_target_mode") == "characters" and "characters" or "classes"
+		local mode = mod:get("automatic_curio_target_mode") ~= "classes" and "characters" or "classes"
 
 		if widget.content.better_inventory_mode ~= mode then
 			widget.content.better_inventory_mode = mode
@@ -1157,7 +1157,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 
 				entries[#entries + 1] = panel_curio_buyer_target_mode_entry(mod, layout, view)
 
-				if mod:get("automatic_curio_target_mode") == "characters" then
+				if mod:get("automatic_curio_target_mode") ~= "classes" then
 					local profiles = known_curio_buyer_profiles(mod)
 
 					if #profiles == 0 then
@@ -2284,7 +2284,7 @@ end
 
 Features.sync_inventory_sort_setting = function(mod, layout)
 	local enabled = mod:get("prioritize_equipped_favorites") ~= false
-	local perfect_rolls_enabled = mod:get("prioritize_perfect_roll_weapons") == true
+	local perfect_rolls_enabled = mod:get("prioritize_perfect_roll_weapons") ~= false
 
 	for view in pairs(registered_inventory_views) do
 		Features.invalidate_view_composition(view)

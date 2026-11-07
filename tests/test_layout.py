@@ -2935,6 +2935,22 @@ def main() -> None:
     assert tuple(
         new_item_highlights[0].style.color[index] for index in range(1, 5)
     ) == (255, 250, 189, 73)
+
+    # Unset colour channels fall back to the data.lua green, not the gold
+    # copied from the equipped highlight.
+    for channel in "rgb":
+        setattr(mod.settings, f"new_item_highlight_color_{channel}", None)
+    default_color_new_item_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, default_color_new_item_blueprint, 640)
+    assert tuple(
+        blueprint_passes_with_prefix(
+            default_color_new_item_blueprint, "better_inventory_new_item_highlight"
+        )[0].style.color[index]
+        for index in range(1, 5)
+    ) == (255, 105, 210, 120)
+    mod.settings.new_item_highlight_color_r = 250
+    mod.settings.new_item_highlight_color_g = 189
+    mod.settings.new_item_highlight_color_b = 73
     native_new_item_pass = blueprint_pass_by_value(
         new_item_blueprint, "content/ui/materials/symbols/new_item_indicator"
     )
@@ -3358,6 +3374,18 @@ def main() -> None:
     assert tuple(
         translucent_blessing_style.text_color[index] for index in range(1, 5)
     ) == (128, 144, 213, 255)
+    mod.settings.weapon_blessing_text_opacity = 100
+
+    # Unset opacity falls back to the data.lua default (80%), not 100%.
+    mod.settings.weapon_blessing_text_opacity = None
+    default_opacity_blessing_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, default_opacity_blessing_blueprint, 640)
+    assert (
+        blueprint_pass(
+            default_opacity_blessing_blueprint, "better_inventory_blessing_text_1"
+        ).style.text_color[1]
+        == 204
+    )
     mod.settings.weapon_blessing_text_opacity = 100
 
     mod.settings.weapon_blessing_text_bottom_padding = 6
@@ -3882,6 +3910,18 @@ def main() -> None:
     assert tuple(
         translucent_perk_style.text_color[index] for index in range(1, 5)
     ) == (64, 190, 210, 180)
+    mod.settings.weapon_perk_text_opacity = 100
+
+    # Unset opacity falls back to the data.lua default (80%), not 100%.
+    mod.settings.weapon_perk_text_opacity = None
+    default_opacity_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, default_opacity_perk_blueprint, 640)
+    assert (
+        blueprint_pass(
+            default_opacity_perk_blueprint, "better_inventory_weapon_perk_1"
+        ).style.text_color[1]
+        == 204
+    )
     mod.settings.weapon_perk_text_opacity = 100
 
     standard_weapon_perk_expectations = {
@@ -5788,6 +5828,35 @@ def main() -> None:
             assert(markers.style.equipped_icon.offset[2] == 13)
             assert(markers.style.equipped_icon.offset[1] == -6)
         end
+        -- First load: unset Character Overview settings resolve to the data.lua
+        -- defaults (vertical rating, native Curio overlay, two-line Curio names).
+        local keys = {"character_overview_weapon_rarity_rating_mode", "character_overview_use_native_curio_overlay", "character_overview_curio_name_mode", "name_it_force_curio_name_in_detailed_mode", "curio_display_profile"}
+        local saved = {}
+        for _, key in ipairs(keys) do saved[key] = settings[key]; settings[key] = nil end
+        settings.curio_display_profile = "detailed"
+        local unset_vertical = pass(overview.character_overview_weapon_blueprint(nil, "melee"), "better_inventory_weapon_rarity_rating").style
+        assert(unset_vertical.offset[1] == 8 and unset_vertical.size[2] == 112)
+        local unset_curio = overview.character_overview_curio_blueprint()
+        local unset_widget = widget(unset_curio)
+        unset_curio.init({_ui_renderer = {}}, unset_widget, {item = {item_type = "GADGET", rarity = 3}, test_display_name = "Curio"}, nil, nil, {})
+        assert(unset_widget.content.better_inventory_native_curio_overlay_enabled == true)
+        settings.name_it_force_curio_name_in_detailed_mode = false
+        settings.character_overview_curio_name_mode = "two_lines"
+        local two_lines_offset = pass(overview.character_overview_curio_blueprint(), "better_inventory_curio_stat_1").style.offset[2]
+        settings.character_overview_curio_name_mode = nil
+        assert(pass(overview.character_overview_curio_blueprint(), "better_inventory_curio_stat_1").style.offset[2] == two_lines_offset)
+        local unset_markers = {
+            content = {element = {slot = {name = "slot_attachment_1"}}},
+            style = {
+                equipped_icon = {horizontal_alignment = "right", vertical_alignment = "top", offset = {-8, 8, 20}, size = {28, 28}},
+                favorite_icon = {horizontal_alignment = "right", vertical_alignment = "top", offset = {-8, 125, 20}, size = {28, 28}},
+                better_inventory_curio_stat_1 = {offset = {16, 110, 31}},
+                maxstatmark_max_inv = {vertical_alignment = "center", offset = {-6, 0, 20}},
+            },
+        }
+        overview.synchronize_character_overview_equipped_icon(unset_markers, false)
+        assert(unset_markers.style.maxstatmark_max_inv.offset[2] == 148)
+        for _, key in ipairs(keys) do settings[key] = saved[key] end
         return true
     """)
     # Cruncher screenshot: Execution and Unstoppable Force are separate rows.

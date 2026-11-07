@@ -1185,12 +1185,9 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 		z_offset = 4
 	end
 
-	local default_red = mode == "soft_glow" and 255 or 250
-	local default_green = mode == "soft_glow" and 255 or 189
-	local default_blue = mode == "soft_glow" and 255 or 73
-	local red = math.floor(numeric_setting(mod, "new_item_highlight_color_r", default_red, 0, 255) + 0.5)
-	local green = math.floor(numeric_setting(mod, "new_item_highlight_color_g", default_green, 0, 255) + 0.5)
-	local blue = math.floor(numeric_setting(mod, "new_item_highlight_color_b", default_blue, 0, 255) + 0.5)
+	local red = math.floor(numeric_setting(mod, "new_item_highlight_color_r", 105, 0, 255) + 0.5)
+	local green = math.floor(numeric_setting(mod, "new_item_highlight_color_g", 210, 0, 255) + 0.5)
+	local blue = math.floor(numeric_setting(mod, "new_item_highlight_color_b", 120, 0, 255) + 0.5)
 
 	for layer = 1, pass_count do
 		local size_addition = base_size_addition + (layer - 1) * layer_size_step
@@ -1290,7 +1287,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local side_icon_left = show_blessing_text_icons and math.min(content_right - side_icon_pair_width, blessing_text_left + 110) or content_right
 		local blessing_text_right = show_blessing_text_icons and side_icon_left - 8 or content_right
 		local blessing_text_width = math.max(40, blessing_text_right - blessing_text_left)
-		local blessing_text_color = configured_text_color(mod, "weapon_blessing_text_color", DEFAULT_WEAPON_BLESSING_TEXT_COLOR, "weapon_blessing_text_opacity")
+		local blessing_text_color = configured_text_color(mod, "weapon_blessing_text_color", DEFAULT_WEAPON_BLESSING_TEXT_COLOR, "weapon_blessing_text_opacity", 80)
 		local auto_fit_long_name = setting(mod, "auto_fit_long_blessing_names", true)
 		local truncate_long_name = setting(mod, "truncate_long_blessing_names", false)
 		local minimum_font_size = MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE
@@ -1400,7 +1397,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local perk_text_left = text_left + (show_weapon_perk_ranks and perk_rank_size + PERK_RANK_GAP or 0)
 		local perk_text_right = configuration.content_right or card_width - 8
 		local perk_width = math.max(40, perk_text_right - perk_text_left)
-		local perk_text_color = configured_text_color(mod, "weapon_perk_text_color", DEFAULT_WEAPON_PERK_COLOR, "weapon_perk_text_opacity")
+		local perk_text_color = configured_text_color(mod, "weapon_perk_text_color", DEFAULT_WEAPON_PERK_COLOR, "weapon_perk_text_opacity", 80)
 
 		for i = 1, WEAPON_PERK_COUNT do
 			local y_offset = -(bottom_content_height + section_spacing + (WEAPON_PERK_COUNT - i) * perk_line_step)
