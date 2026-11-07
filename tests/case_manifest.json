@@ -142,20 +142,20 @@
     {"name": "bounded_parser_drift_fail_closed", "risk": "critical", "start_line": 83, "end_line": 109},
     {"name": "malformed_delimiter_budget_and_valid_login_footer", "risk": "critical", "start_line": 110, "end_line": 136}
   ],
-    "test_games_lantern_workflow.py": [
-      {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 107},
-      {"name": "exact_five_stat_profile_resolution", "risk": "critical", "start_line": 108, "end_line": 156},
-      {"name": "public_class_slug_aliases", "risk": "critical", "start_line": 157, "end_line": 171},
-      {"name": "brunt_family_level_weapon_resolution", "risk": "critical", "start_line": 172, "end_line": 222},
-      {"name": "native_family_offer_exact_mark_binding", "risk": "critical", "start_line": 223, "end_line": 302},
-      {"name": "unknown_mark_profile_degrades_to_valid_native_choices", "risk": "critical", "start_line": 303, "end_line": 359},
-      {"name": "localized_perk_and_blessing_resolution", "risk": "critical", "start_line": 360, "end_line": 423},
-      {"name": "canonical_perk_family_wording_drift", "risk": "critical", "start_line": 424, "end_line": 486},
-      {"name": "slot_specific_perk_resolution_and_catalog_failures", "risk": "critical", "start_line": 487, "end_line": 612},
-      {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 613, "end_line": 663},
-      {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 664, "end_line": 678},
-      {"name": "mapped_stat_fallback_preserves_traits_and_requires_review", "risk": "critical", "start_line": 679, "end_line": 728},
-    {"name": "unknown_mark_rejects_duplicate_normalized_incompatible_stats", "risk": "critical", "start_line": 729, "end_line": 734}
+  "test_games_lantern_workflow.py": [
+    {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 115},
+    {"name": "exact_five_stat_profile_resolution", "risk": "critical", "start_line": 116, "end_line": 164},
+    {"name": "public_class_slug_aliases", "risk": "critical", "start_line": 165, "end_line": 179},
+    {"name": "brunt_family_level_weapon_resolution", "risk": "critical", "start_line": 180, "end_line": 230},
+    {"name": "native_family_offer_exact_mark_binding", "risk": "critical", "start_line": 231, "end_line": 310},
+    {"name": "unknown_mark_profile_degrades_to_valid_native_choices", "risk": "critical", "start_line": 311, "end_line": 367},
+    {"name": "localized_perk_and_blessing_resolution", "risk": "critical", "start_line": 368, "end_line": 431},
+    {"name": "canonical_perk_family_wording_drift", "risk": "critical", "start_line": 432, "end_line": 494},
+    {"name": "slot_specific_perk_resolution_and_catalog_failures", "risk": "critical", "start_line": 495, "end_line": 620},
+    {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 621, "end_line": 672},
+    {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 673, "end_line": 687},
+    {"name": "mapped_stat_fallback_preserves_traits_and_requires_review", "risk": "critical", "start_line": 688, "end_line": 737},
+    {"name": "unknown_mark_rejects_duplicate_normalized_incompatible_stats", "risk": "critical", "start_line": 738, "end_line": 743}
   ],
   "test_games_lantern_queue.py": [
     {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 18, "end_line": 101},

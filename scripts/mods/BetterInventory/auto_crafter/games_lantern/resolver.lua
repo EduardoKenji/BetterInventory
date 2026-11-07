@@ -531,19 +531,6 @@ local function resolve_custom_stats(external, offer, localize_offer_label)
 	return mapped, nil
 end
 
-local function catalog_for(context, offer)
-	if type(context and context.catalog_for_offer) == "function" then
-		local ok, catalog = pcall(context.catalog_for_offer, offer)
-
-		return ok and catalog or nil
-	end
-
-	local catalogs = context and context.catalogs
-	local key = offer and (offer.master_id or offer.parent_pattern)
-
-	return type(catalogs) == "table" and key ~= nil and catalogs[key] or context and context.catalog
-end
-
 -- Darktide's canonical perk traits use combat-system armor names while the UI
 -- and Games Lantern use player-facing enemy armor names. Keep this mapping at
 -- the resolver boundary and still require the mapped trait to exist in the
@@ -1087,23 +1074,6 @@ local function attach_catalog(job, catalog, localize_trait_label)
 	return job, nil
 end
 
-local function resolve_one(external, slot, context)
-	local job, reason = resolve_identity(external, slot, context)
-
-	if not job then
-		return nil, reason
-	end
-
-	local catalog = catalog_for(context, job.offer)
-	local completed, catalog_reason = attach_catalog(job, catalog, context and context.localize_offer_label)
-
-	if not completed then
-		return nil, catalog_reason
-	end
-
-	return completed, nil
-end
-
 -- Identity resolution is split from trait resolution so the host can perform
 -- the two live read-only catalogue requests without installing a partial
 -- queue. Neither function mutates settings, selection, or account state.
@@ -1217,57 +1187,6 @@ function Resolver.attach_catalogs(identity_build, catalogs, context)
 		source_uuid = identity_build.source_uuid,
 		source_archetype = identity_build.source_archetype,
 		jobs = completed_jobs,
-	}, nil
-end
-
-function Resolver.resolve(model, context)
-	if type(model) ~= "table" or type(model.weapons) ~= "table" then
-		return nil, "external_model_unavailable"
-	end
-
-	context = context or {}
-
-	local archetype_matches = archetype_compatible(model.source_archetype, context.active_archetype)
-	if not model.source_archetype or not context.active_archetype then
-		return nil, "archetype_unavailable"
-	elseif not archetype_matches then
-		return nil, "archetype_mismatch"
-	end
-
-	local melee_candidates = {}
-	local ranged_candidates = {}
-
-	for _, external in ipairs(model.weapons) do
-		local melee, melee_reason = resolve_one(external, "melee", context)
-		local ranged, ranged_reason = resolve_one(external, "ranged", context)
-
-		if melee then
-			melee_candidates[#melee_candidates + 1] = melee
-		end
-
-		if ranged then
-			ranged_candidates[#ranged_candidates + 1] = ranged
-		end
-
-		if not melee and not ranged and #model.weapons == 2 then
-			return nil, tostring(melee_reason or ranged_reason or "weapon_unavailable")
-		end
-	end
-
-	if #melee_candidates ~= 1 then
-		return nil, #melee_candidates == 0 and "melee_weapon_unavailable" or "multiple_melee_weapons"
-	end
-
-	if #ranged_candidates ~= 1 then
-		return nil, #ranged_candidates == 0 and "ranged_weapon_unavailable" or "multiple_ranged_weapons"
-	end
-
-	return {
-		kind = "games_lantern_build",
-		resolver_contract_version = Resolver.CONTRACT_VERSION,
-		source_uuid = model.source_uuid,
-		source_archetype = model.source_archetype,
-		jobs = {melee_candidates[1], ranged_candidates[1]},
 	}, nil
 end
 
