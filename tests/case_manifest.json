@@ -133,8 +133,8 @@
     {"name": "custom_stat_exact_fallback_and_resume", "risk": "critical", "start_line": 2884, "end_line": 3065},
     {"name": "acquisition_mode_and_dump_comparison", "risk": "critical", "start_line": 3066, "end_line": 3143},
     {"name": "psych_ward_staged_queue_idle_reconciliation_budget", "risk": "high", "start_line": 3144, "end_line": 3187},
-    {"name": "imported_queue_retires_stale_native_trait_discovery", "risk": "critical", "start_line": 3188, "end_line": 3325},
-    {"name": "auto_crafter_lock_lifecycle_and_read_bounds", "risk": "critical", "start_line": 3326, "end_line": 3471}
+    {"name": "imported_queue_retires_stale_native_trait_discovery", "risk": "critical", "start_line": 3188, "end_line": 3333},
+    {"name": "auto_crafter_lock_lifecycle_and_read_bounds", "risk": "critical", "start_line": 3334, "end_line": 3479}
   ],
   "test_games_lantern_import.py": [
     {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 19, "end_line": 48},

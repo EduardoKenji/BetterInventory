@@ -2979,11 +2979,16 @@ function Controller.new(dependencies)
 
 		if view_idle_poll_due and self._view_is_valid and self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
 			local selected_key = native_selected_key()
+			local run_job = run_is_active() and self._run_imported_job
 
-			if selected_key ~= self._selected_native_key then
+			if run_job and selected_key ~= offer_key(run_job.offer) then
+				-- A spending run fails closed: moving Brunt off the run's own offer stops it.
+				self._selected_native_key = selected_key
+				self:_stop_active_run("selected_weapon_changed")
+			elseif selected_key ~= self._selected_native_key then
 				self._selected_native_key = selected_key
 
-				-- A staged or running Games Lantern job targets its own offer, so Brunt's selection must not stop or re-plan it.
+				-- A merely staged job targets its own offer, so Brunt's selection must not re-plan it.
 				if not self._imported_job and not self._run_imported_job then
 					self:_stop_active_run("selected_weapon_changed")
 					self:_refresh_plan("target_changed")

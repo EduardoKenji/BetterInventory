@@ -3259,7 +3259,9 @@ def main() -> None:
 			local builds = 0
 			local counting_planner = {build = function(...) builds = builds + 1 return Planner.build(...) end}
 			local function new_controller(backend)
-				local controller = Controller.new({backend = backend or {}, planner = counting_planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+				local reporter = reports()
+				local controller = Controller.new({backend = backend or {}, planner = counting_planner, context = context(), settings = base_settings(), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+				controller._test_reporter = reporter
 				controller._snapshot = snapshot_with(nil)
 				controller._active_view = {}
 				controller._view_is_valid = true
@@ -3289,6 +3291,7 @@ def main() -> None:
 			for _ = 1, 4 do controller:update(0.5) end
 			assert(builds == staged_builds)
 			assert(controller:snapshot().plan.target.master_id == "weapon-1")
+			for _, event in ipairs(controller._test_reporter.events) do assert(event.kind ~= "purchase_search_stopped") end
 
 			-- Clearing the job returns to native tracking: one rebuild per real change.
 			assert(controller:clear_imported_job() == true)
@@ -3303,8 +3306,9 @@ def main() -> None:
 			assert(builds == changed_builds, "re-planned again without a selection change")
 			assert(controller:snapshot().plan.target.master_id == "weapon-1")
 
-			-- A run can only start while Brunt shows the job's weapon. Navigating to
-			-- another weapon mid-run must not stop or re-plan the imported run.
+			-- A run can only start while Brunt shows the job's weapon. While it stays
+			-- there the run keeps going with no repeated planning; moving Brunt to
+			-- another weapon stops the spending run (fail closed).
 			local backend = {}
 			local purchase = pending()
 			function backend:purchase_offer(_) return purchase end
@@ -3313,14 +3317,18 @@ def main() -> None:
 			assert(running:set_imported_job(staged_job()) == true)
 			assert(running:start_purchase_search() == true)
 			assert(running._run_imported_job ~= nil and running:snapshot().search.running == true)
-			for _ = 1, 4 do running:update(0.5) end
-			assert(running:snapshot().search.running == true)
 			local run_builds = builds
+			for _ = 1, 20 do running:update(0.5) end
+			assert(running:snapshot().search.running == true, "unchanged selection stopped the imported run")
+			assert(builds == run_builds, "unchanged selection re-planned the imported run")
 			CurrentOffer = {offerId = "offer-third", masterId = "weapon-third"}
+			running:update(0.5)
+			assert(running:snapshot().search.running == false, "imported run survived a selection change")
+			local stopped = running._test_reporter.events[#running._test_reporter.events]
+			assert(stopped.kind == "purchase_search_stopped" and stopped.payload.reason == "selected_weapon_changed")
+			local run_stop_builds = builds
 			for _ = 1, 10 do running:update(0.5) end
-			assert(running:snapshot().search.running == true, "imported run stopped by Brunt selection change")
-			assert(running._run_imported_job ~= nil)
-			assert(builds == run_builds, "imported run re-planned by Brunt selection change")
+			assert(builds == run_stop_builds, "stopped imported run kept re-planning")
 		end
 
 		-- Account-lock lifecycle regressions (audit B1, B8, B9, B10). The shared
