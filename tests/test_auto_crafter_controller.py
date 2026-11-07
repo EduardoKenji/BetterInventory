@@ -14,6 +14,12 @@ def main() -> None:
     update_source = controller_source.split("\tfunction self:update(dt)", 1)[1].split("\tfunction self:snapshot()", 1)[0]
     assert "local update_dt = finite_dt(dt)" in update_source
     assert update_source.count("finite_dt(dt)") == 1
+    # Pure GET workflow reads must carry read_only so a hung one fails at the
+    # 15 s read bound instead of the 45 s mutation quarantine bound.
+    core = RUNTIME_ROOT / "auto_crafter" / "core"
+    assert "end, accept_baseline, { read_only = true })" in controller_source
+    assert "end, handle_mastery, { read_only = true })" in (core / "phase3_workflow.lua").read_text(encoding="utf-8")
+    assert "end, { read_only = true })" in (core / "phase4_workflow.lua").read_text(encoding="utf-8").split("phase4_mastery_cost_preflight", 1)[1]
     assert "local current_config = planner_config()" not in update_source
 
     lua = LuaRuntime(unpack_returned_tuples=True)
@@ -3242,6 +3248,152 @@ def main() -> None:
 			assert(controller:snapshot().catalog == imported_catalog)
 			native_catalog.next_callback({available = false, reason = "late native result"})
 			assert(controller:snapshot().catalog == imported_catalog)
+		end
+
+		-- Account-lock lifecycle regressions (audit B1, B8, B9, B10). The shared
+		-- harness holds the account-operation token like the host arbiter does.
+		function lock_harness(settings_overrides)
+			local harness = {token = nil, releases = 0, current = true, purchase = pending()}
+			harness.account_operation = {
+				acquire = function() harness.token = 91 return 91 end,
+				is_current = function(_, token) return harness.current and token == harness.token end,
+				release = function(_, token)
+					assert(token == harness.token)
+					harness.releases = harness.releases + 1
+					harness.token = nil
+					return true
+				end,
+			}
+			harness.backend = {}
+			function harness.backend:purchase_offer(_) return harness.purchase end
+			harness.settings = base_settings(settings_overrides)
+			harness.reporter = reports()
+			harness.controller = Controller.new({backend = harness.backend, planner = Planner, context = context(), settings = harness.settings, reporter = harness.reporter, account_operation = harness.account_operation, get_selected_offer = function(view) return view and CurrentOffer or nil end})
+			local controller = harness.controller
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == true)
+			assert(harness.token == 91)
+			function harness.settle_request()
+				-- The purchase finished and the run is between steps.
+				controller._operation_inflight = false
+				controller._operation_promise = nil
+				controller._operation_kind = nil
+			end
+			function harness.count(kind, reason)
+				local total = 0
+				for _, event in ipairs(harness.reporter.events) do
+					if event.kind == kind and (reason == nil or event.payload.reason == reason) then total = total + 1 end
+				end
+				return total
+			end
+			return harness
+		end
+
+		-- B1: turning the feature off mid-run emits the terminal event the host
+		-- queue waits for and releases the shared account lock.
+		do
+			local h = lock_harness()
+			h.settle_request()
+			h.settings.values.auto_crafter_enable = false
+			assert(h.controller:on_setting_changed("auto_crafter_enable") == true)
+			assert(h.count("purchase_search_stopped", "disabled") == 1)
+			assert(h.token == nil and h.releases == 1)
+			assert(h.controller:is_busy() == false)
+			assert(h.controller:snapshot().phase == "disabled")
+		end
+
+		-- B8: a fast-upgrade start failure while a purchase is still pending must
+		-- quarantine, not clear the in-flight gate and release the account lock.
+		do
+			local h = lock_harness()
+			local controller = h.controller
+			function h.backend:upgrade_weapon_rarity(_) return nil end
+			controller._phase3 = {running = true, fast_upgrade_head = 1, fast_upgrade_inflight = {}, fast_upgrade_inflight_count = 0, fast_upgrade_queue = {}, fast_upgrade_states = {}}
+			assert(controller._operation_inflight == true)
+			assert(controller:_phase3_queue_fast_upgrade(controller._generation, {gear_id = "fast-fail", rarity = 1}) == false)
+			assert(controller:snapshot().operation_inflight == true)
+			assert(controller:snapshot().operation_quarantined == true)
+			assert(h.token == 91 and h.releases == 0)
+			h.purchase.next_callback({items = {}})
+			assert(h.token == nil and h.releases == 1)
+		end
+
+		-- B9: an auxiliary abort with nothing in flight must not strand the lock.
+		do
+			local h = lock_harness()
+			h.settle_request()
+			assert(h.controller:_abort_for_auxiliary_failure(h.controller._generation, "aux failed") == true)
+			assert(h.token == nil and h.releases == 1)
+			assert(h.controller:is_busy() == false)
+		end
+
+		-- B9/B10: losing account ownership during a bounded poll reconciles the
+		-- run (and frees the lock) instead of polling forever with is_busy() true.
+		do
+			local h = lock_harness()
+			local controller = h.controller
+			h.settle_request()
+			controller._purchase_confirmation = {attempts = 0, elapsed = 0, gear_id = "gear-x", on_confirmed = function() error("must not confirm") end, wait = 0}
+			h.current = false
+			controller:update(1)
+			assert(controller:snapshot().reconciliation_required == true)
+			assert(controller:snapshot().search.running == false)
+			assert(controller._purchase_confirmation == nil)
+			assert(h.token == nil and h.releases == 1)
+			assert(h.count("operation_reconciliation_required") == 1)
+			controller:update(1)
+			assert(h.count("operation_reconciliation_required") == 1)
+			assert(controller:is_busy() == false)
+		end
+
+		do
+			local h = lock_harness({auto_crafter_level_mastery_20 = true})
+			local controller = h.controller
+			h.settle_request()
+			controller._mastery = {running = true, mastery_id = "pattern-1"}
+			h.current = false
+			assert(controller:_poll_mastery() == false)
+			assert(controller:snapshot().reconciliation_required == true)
+			assert(controller:snapshot().mastery.running == false)
+			assert(h.token == nil)
+		end
+
+		-- B11: a view closed in the same frame as the selection poll must not stop
+		-- the run as selected_weapon_changed (the run outlives the view).
+		do
+			local h = lock_harness()
+			local controller = h.controller
+			h.settle_request()
+			controller._selected_native_key = "stale-key"
+			local view_open = true
+			controller._context = {
+				current_character_id = function() return "character-1" end,
+				is_valid_brunt_view = function() return view_open end,
+				is_runtime_valid = function() return true end,
+			}
+			view_open = false
+			controller:update(1)
+			assert(controller:snapshot().view_is_valid == false)
+			assert(controller:snapshot().phase ~= "selected_weapon_changed")
+			assert(h.count("purchase_search_stopped", "selected_weapon_changed") == 0)
+			assert(controller:snapshot().search.running == true)
+		end
+
+		-- B12: pure GET workflow reads fail at the 15 s read bound, not the 45 s
+		-- mutation quarantine bound.
+		do
+			local h = lock_harness({auto_crafter_level_mastery_20 = true})
+			local controller = h.controller
+			local read = pending()
+			function h.backend:get_mastery_by_pattern(_) return read end
+			h.settle_request()
+			controller._mastery = {running = true, mastery_id = "pattern-1"}
+			assert(controller:_poll_mastery() == true)
+			assert(controller:snapshot().operation_kind == "mastery_poll")
+			assert(controller:snapshot().operation_read_only == true)
 		end
 
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")
