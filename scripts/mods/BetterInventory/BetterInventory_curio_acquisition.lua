@@ -21,6 +21,7 @@ local favorite_integration
 local MORNINGSTAR_DELAY = 6
 local OPERATIVE_SELECTION_DELAY = 1
 local MAX_SCAN_ATTEMPTS = 3
+local MAX_ROTATION_WAIT_ATTEMPTS = 6
 local RETRY_DELAY = 5
 local SCHEDULER_POLL_INTERVAL = 1
 local STORE_ROTATION_GRACE_MS = 5000
@@ -67,11 +68,26 @@ local state = {
 	operation_snapshot = nil,
 	purchase_requests_inflight = 0,
 	scan_attempts = 0,
+	rotation_wait_attempts = 0,
+	resume_consumed_rotation = false,
+	pass_dispatched = false,
 	scheduled = false,
 	started = false,
 	token = 0,
 }
 local processed_offer_keys = {}
+
+-- A purchase POST cannot be cancelled once sent, so an "in_flight" key must
+-- outlive context changes or a re-entered context could buy the same offer
+-- twice. "unknown" (ambiguous timeout) is kept too unless the store rotated.
+local function clear_processed_offer_keys(keep_unknown)
+	-- Mutate in place: a pass already running holds this table.
+	for key, value in pairs(processed_offer_keys) do
+		if not (value == "in_flight" or keep_unknown and value == "unknown") then
+			processed_offer_keys[key] = nil
+		end
+	end
+end
 
 local function new_read_promise_container()
 	if PromiseContainer and type(PromiseContainer.new) == "function" then
@@ -1049,6 +1065,7 @@ local function report_purchase_outcomes(mod, purchased, insufficient, partial_fa
 end
 
 local function finish_pass()
+	state.resume_consumed_rotation = false
 	state.completed = true
 	state.scheduled = false
 	state.started = false
@@ -1074,6 +1091,13 @@ local function purchase_candidates(mod, token, candidates, boundary_ms, owned_po
 
 	local function purchase_dispatched()
 		commit_before_purchase()
+
+		if not boundary_committed then
+			-- Raised before the POST: the pass stops safely and nothing is spent.
+			error("rotation boundary could not be committed before purchase")
+		end
+
+		state.pass_dispatched = true
 		state.purchase_requests_inflight = state.purchase_requests_inflight + 1
 	end
 
@@ -1192,7 +1216,21 @@ local function schedule_scan_retry(mod, token, error_value)
 
 	if type(error_value) == "table" and error_value.kind == "store_rotation_pending" then
 		state.started = false
-		state.elapsed = CurioDomains.scheduler.next_retry_delay(state.active_context, RETRY_DELAY, MORNINGSTAR_DELAY, OPERATIVE_SELECTION_DELAY)
+		state.rotation_wait_attempts = state.rotation_wait_attempts + 1
+
+		if state.rotation_wait_attempts >= MAX_ROTATION_WAIT_ATTEMPTS then
+			-- A persistent boundary mismatch must not refetch every profile and
+			-- storefront for the whole session. Give up without committing the
+			-- boundary; the next context entry or settings change retries, and an
+			-- unproven boundary must not arm the store-refresh rescan.
+			state.rotation_boundary_ms = nil
+			finish_pass()
+			log_info(mod, "Store rotation did not publish after bounded waits; stopping this pass without consuming the rotation: " .. error_text(error_value))
+			return
+		end
+
+		-- Back off (RETRY_DELAY more seconds per wait) instead of polling at 1-5 s.
+		state.elapsed = CurioDomains.scheduler.next_retry_delay(state.active_context, RETRY_DELAY, MORNINGSTAR_DELAY, OPERATIVE_SELECTION_DELAY) - RETRY_DELAY * (state.rotation_wait_attempts - 1)
 		state.scan_attempts = 0
 		state.scheduled = true
 		state.scheduled_reason = "rotation_wait"
@@ -1223,6 +1261,7 @@ local function start_scan(mod)
 	local minimum_rotation_boundary_ms = previous_boundary and now and now >= previous_boundary + STORE_ROTATION_GRACE_MS and previous_boundary or nil
 
 	state.started = true
+	state.pass_dispatched = false
 	state.scan_attempts = state.scan_attempts + 1
 	log_diagnostic(mod, string.format("Starting all-character Armoury scan attempt %d.", state.scan_attempts))
 
@@ -1248,6 +1287,7 @@ local function start_scan(mod)
 		-- the first purchase POST. Leaving during scan/revalidation can therefore
 		-- retry the same rotation without risking a duplicate spend.
 		state.rotation_boundary_ms = boundary
+		state.rotation_wait_attempts = 0
 
 		log_diagnostic(mod, string.format("Scan found %d eligible Curio offer(s).", #candidates))
 
@@ -1273,6 +1313,8 @@ local function initialize_context(mod, context)
 	state.elapsed = 0
 	state.hub_character_id = nil
 	state.scan_attempts = 0
+	state.rotation_wait_attempts = 0
+	state.resume_consumed_rotation = false
 	state.scheduled = enabled(mod)
 	state.scheduled_reason = "entry"
 	state.started = false
@@ -1283,7 +1325,7 @@ local function initialize_context(mod, context)
 	state.rotation_boundary_ms = state.next_rotation_at_ms
 
 	if mod:get("automatic_curio_once_per_store_rotation") == false then
-		processed_offer_keys = {}
+		clear_processed_offer_keys(true)
 	end
 end
 
@@ -1300,7 +1342,8 @@ local function arm_rotation_refresh(mod)
 	state.scheduled_reason = "rotation_refresh"
 	state.started = false
 	state.entry_consumed = true
-	processed_offer_keys = {}
+	state.rotation_wait_attempts = 0
+	clear_processed_offer_keys(true)
 	log_diagnostic(mod, "Scheduled one pass after the Armoury store rotation boundary while remaining in the current context.")
 end
 
@@ -1339,6 +1382,8 @@ CurioAcquisition.cancel = function(unloading)
 	state.elapsed = 0
 	state.hub_character_id = nil
 	state.scan_attempts = 0
+	state.rotation_wait_attempts = 0
+	state.resume_consumed_rotation = false
 	state.scheduled = false
 	state.scheduled_reason = nil
 	state.started = false
@@ -1505,6 +1550,7 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	if not state.active_context then
 		if is_morningstar() then
 			CurioAcquisition.begin_morningstar_pass(mod)
+		-- Intentionally fail-closed (== true): an unset value must not enable automatic spending, unlike the data.lua default.
 		elseif is_operative_selection() and mod:get("automatic_curio_scan_operative_selection") == true then
 			CurioAcquisition.enter_operative_selection(mod)
 		else
@@ -1543,7 +1589,7 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	if state.next_rotation_at_ms and now and now >= state.next_rotation_at_ms + STORE_ROTATION_GRACE_MS and state.ledger_rotation_boundary_ms == state.next_rotation_at_ms then
 		-- Offer IDs are safe to reuse only after the observed store boundary. A
 		-- fresh ledger lets the new rotation consider the same slot again.
-		processed_offer_keys = {}
+		clear_processed_offer_keys(false)
 		state.ledger_rotation_boundary_ms = nil
 	end
 
@@ -1551,6 +1597,7 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	if Consecration.busy() then return end
 
 	if state.completed then
+		-- Intentionally fail-closed (== true): an unset value must not enable automatic spending, unlike the data.lua default.
 		if mod:get("automatic_curio_rescan_on_store_refresh") == true and state.rotation_boundary_ms then
 			local now = server_time()
 
@@ -1563,6 +1610,12 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	end
 
 	if not state.scheduled or state.started then
+		return
+	end
+
+	-- A POST that outlived its context (leave/re-enter) must settle before another
+	-- scan can start; otherwise the same offer could be sent twice.
+	if state.purchase_requests_inflight > 0 then
 		return
 	end
 
@@ -1587,7 +1640,7 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 
 	if gate == nil then
 		return
-	elseif gate == false then
+	elseif gate == false and not state.resume_consumed_rotation then
 		state.entry_consumed = true
 		finish_pass()
 		log_diagnostic(mod, "Skipped scheduled pass because the current Armoury store rotation was already consumed.")
@@ -1673,6 +1726,11 @@ CurioAcquisition.defer_for_account_operation = function(mod)
 		state.scan_attempts = 0
 		state.scheduled = enabled(mod) and state.active_context ~= nil
 		state.scheduled_reason = state.scheduled and "account_operation_deferred" or nil
+		-- The boundary was consumed by the first purchase; let the resumed pass
+		-- finish the remaining candidates (bought offers stay in processed keys).
+		if state.scheduled and state.pass_dispatched then
+			state.resume_consumed_rotation = true
+		end
 		state.started = false
 		state.operation_snapshot = nil
 

@@ -234,11 +234,12 @@ local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatc
 				return rejected("StoreService.purchase_item_with_wallet is unavailable")
 			end
 
-			processed_offer_keys[key] = "in_flight"
-
+			-- The dispatch callback may refuse (fail closed) before any POST is sent.
 			if on_purchase_dispatch then
 				on_purchase_dispatch()
 			end
+
+			processed_offer_keys[key] = "in_flight"
 
 			local settled = false
 			local function settle_purchase()

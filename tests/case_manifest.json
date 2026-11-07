@@ -207,12 +207,16 @@
     {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
   ],
   "test_curio_acquisition.py": [
-    {"name": "purchase_revalidation", "risk": "critical", "start_line": 686, "end_line": 1112},
-    {"name": "account_scoped_reports", "risk": "high", "start_line": 1113, "end_line": 1410},
-    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1411, "end_line": 1724},
-    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1725, "end_line": 1756},
-    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1757, "end_line": 1780},
-    {"name": "idle_update_gate", "risk": "high", "start_line": 1781, "end_line": 1796}
+    {"name": "purchase_revalidation", "risk": "critical", "start_line": 700, "end_line": 1153},
+    {"name": "account_scoped_reports", "risk": "high", "start_line": 1154, "end_line": 1451},
+    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1452, "end_line": 1765},
+    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1766, "end_line": 1797},
+    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1798, "end_line": 1821},
+    {"name": "rotation_boundary_persistence", "risk": "critical", "start_line": 1822, "end_line": 1876},
+    {"name": "rotation_wait_cap", "risk": "critical", "start_line": 1877, "end_line": 1918},
+    {"name": "reentry_inflight_guard", "risk": "critical", "start_line": 1919, "end_line": 1943},
+    {"name": "deferred_pass_resume", "risk": "critical", "start_line": 1944, "end_line": 2001},
+    {"name": "idle_update_gate", "risk": "high", "start_line": 2002, "end_line": 2017}
   ],
   "test_curio_domains.py": [
     {"name": "context_snapshot", "risk": "high", "start_line": 20, "end_line": 33},

@@ -367,6 +367,19 @@ local function persist_rotation_boundary(mod, state, boundary_ms, context)
 
 	local success = pcall(mod.set, mod, ROTATION_HISTORY_SETTING_ID, state.rotation_history, false)
 
+	if success then
+		-- mod:set only marks the setting dirty; DMF flushes on state change or
+		-- unload, so a crash after a purchase would lose the boundary. Save now and
+		-- read back, because DMF logs serialization failures without throwing.
+		local dmf = get_mod("DMF")
+		local history = state.rotation_history
+		success = pcall(function()
+			dmf.save_unsaved_settings_to_file()
+			local saved = Application.user_setting("mods_settings", mod:get_name(), ROTATION_HISTORY_SETTING_ID)
+			assert(type(saved) == "table" and table.equals(history, saved), "rotation boundary was not saved")
+		end)
+	end
+
 	if not success then
 		log_info(mod, "Could not persist the Automatic Curio Buyer rotation boundary; session memory remains protective.")
 	end
@@ -390,10 +403,14 @@ local function commit_rotation_boundary(mod, state, boundary_ms, context)
 	state.ledger_rotation_boundary_ms = boundary_ms
 
 	if mod:get("automatic_curio_once_per_store_rotation") ~= false then
-		persist_rotation_boundary(mod, state, boundary_ms, context)
+		local persisted = persist_rotation_boundary(mod, state, boundary_ms, context)
 		-- persist_rotation_boundary rehydrates state from the old entry before
 		-- writing it; restore the committed value for this live session.
 		state.next_rotation_at_ms = boundary_ms
+
+		-- Fail closed: a purchase must not be sent while a crash could still
+		-- allow a second purchase in the same rotation.
+		return persisted
 	end
 
 	return true
