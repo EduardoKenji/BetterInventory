@@ -260,8 +260,11 @@ local function curio_primary_trait_name(item)
 	end
 end
 
-local function curio_is_protected(mod, item, level)
-	local primary_trait_name, primary_value = curio_primary_trait_name(item)
+local function curio_is_protected(mod, item, level, primary_trait_name, primary_value)
+	if primary_trait_name == nil then
+		primary_trait_name, primary_value = curio_primary_trait_name(item)
+	end
+
 	local setting_id = primary_trait_name and CURIO_PRIMARY_TRAIT_SETTINGS[primary_trait_name]
 	local protect_level = mod:get("quick_discard_protect_high_level_curios") ~= false
 	local protect_health = mod:get("quick_discard_protect_health_roll_curios") == true
@@ -314,7 +317,7 @@ end
 
 Policy.curio_is_protected = curio_is_protected
 
-local function automatic_curio_acquisition_protects(mod, item, level)
+local function automatic_curio_acquisition_protects(mod, item, level, primary_trait_name, primary_value)
 	if mod:get("enable_automatic_curio_acquisition") ~= true then
 		return false
 	end
@@ -325,7 +328,10 @@ local function automatic_curio_acquisition_protects(mod, item, level)
 		return false
 	end
 
-	local primary_trait_name, primary_value = curio_primary_trait_name(item)
+	if primary_trait_name == nil then
+		primary_trait_name, primary_value = curio_primary_trait_name(item)
+	end
+
 	local setting_id = primary_trait_name and CURIO_BUYER_PRIMARY_TRAIT_SETTINGS[primary_trait_name]
 
 	if not setting_id or mod:get(setting_id) == false then
@@ -400,16 +406,19 @@ local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipp
 	-- Buying and automatically discarding the same Curio on a later hub entry is
 	-- incoherent and wastes currency. Acquisition-filter matches remain protected
 	-- even when the general high-level Curio protection is configured differently.
-	if item.item_type == "GADGET" and automatic_curio_acquisition_protects(mod, item, level) then
-		return false
-	end
+	if item.item_type == "GADGET" then
+		-- Resolved once for both checks.
+		local primary_trait_name, primary_value = curio_primary_trait_name(item)
 
-	if item.item_type == "GADGET" and curio_is_protected(mod, item, level) then
-		return false
+		if automatic_curio_acquisition_protects(mod, item, level, primary_trait_name, primary_value) or curio_is_protected(mod, item, level, primary_trait_name, primary_value) then
+			return false
+		end
 	end
 
 	return true
 end
+
+local NIL_SETTING = {}
 
 local function collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, maximum_equipped_levels, favorite_gear_ids)
 	local candidates = {}
@@ -419,13 +428,29 @@ local function collect_quick_discard_candidates(mod, source_items, is_equipped, 
 	-- One read per scan: DMF clones table-valued settings on every mod:get.
 	local customized = mod:get("custom_item_name_and_colors")
 	local customized_gear_ids = type(customized) == "table" and customized or nil
+	-- The scan is synchronous, so each scalar setting is read once and the next scan reads it afresh.
+	local scan_values = {}
+	local scan_settings = {
+		get = function(_, setting_id)
+			local value = scan_values[setting_id]
+
+			if value == nil then
+				value = mod:get(setting_id)
+				scan_values[setting_id] = value == nil and NIL_SETTING or value
+			elseif value == NIL_SETTING then
+				return nil
+			end
+
+			return value
+		end,
+	}
 
 	for _, entry in pairs(source_items or {}) do
 		local item = entry and (entry.real_item or entry.item or entry)
 		local gear_id = item and item.gear_id
 
 		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) then
-			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped, maximum_equipped_levels, favorite_gear_ids, customized_gear_ids)
+			local success, eligible = pcall(eligible_for_quick_discard, scan_settings, item, is_equipped, maximum_equipped_levels, favorite_gear_ids, customized_gear_ids)
 
 			if success and eligible then
 				seen[gear_id] = true

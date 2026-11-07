@@ -794,8 +794,10 @@ CurioProfiles.set_character_enabled = function(mod, character_id, enabled_value)
 	mod:set(CHARACTER_SELECTION_SETTING_ID, next(selection) and selection or nil, false)
 	profile_state.character_selection = selection
 
-	for index = 1, #known_character_slots(mod) do
-		if known_character_slots(mod)[index].character_id == key then
+	local slots = known_character_slots(mod)
+
+	for index = 1, #slots do
+		if slots[index].character_id == key then
 			mod:set(character_slot_setting_id(index), enabled_value ~= false, false)
 			break
 		end

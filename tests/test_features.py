@@ -2068,6 +2068,46 @@ def main() -> None:
     mod.settings.quick_discard_protect_health_roll_curios = False
     mod.settings.quick_discard_protect_toughness_roll_curios = False
 
+    # P22: a scan reads each setting once instead of ~10 times per Curio, and
+    # the next scan still sees a changed setting immediately.
+    lua.execute(
+        '''
+        scan_curios = {}
+        for index = 1, 120 do
+            scan_curios[index] = {gear_id = "scan_curio_" .. index, item_type = "GADGET", level = 400, rarity = 1,
+                traits = {{id = "gadget_innate_health_increase", value = 1}}}
+        end
+        scan_get_calls = 0
+        scan_real_get = test_mod.get
+        test_mod.get = function(self, setting_id) scan_get_calls = scan_get_calls + 1 return scan_real_get(self, setting_id) end
+        '''
+    )
+    scan_candidates = features.quick_discard_candidates_from_items(mod, lua.globals().scan_curios, lua.table_from({}))
+    assert len(scan_candidates) == 120
+    assert lua.globals().scan_get_calls <= 30, lua.globals().scan_get_calls
+    mod.settings.quick_discard_curio_protection_level = 300
+    assert len(features.quick_discard_candidates_from_items(mod, lua.globals().scan_curios, lua.table_from({}))) == 0
+    mod.settings.quick_discard_curio_protection_level = 410
+    assert len(features.quick_discard_candidates_from_items(mod, lua.globals().scan_curios, lua.table_from({}))) == 120
+    lua.execute("test_mod.get = scan_real_get")
+    # The primary trait is resolved once per Curio even when both the buyer and
+    # the high-level protection checks run.
+    mod.settings.enable_automatic_curio_acquisition = True
+    mod.settings.automatic_curio_min_item_level = 300
+    mod.settings.automatic_curio_buy_health = False
+    lua.execute(
+        '''
+        trait_resolve_calls = 0
+        trait_real_resolve = TestCurioValues.resolve
+        TestCurioValues.resolve = function(...) trait_resolve_calls = trait_resolve_calls + 1 return trait_real_resolve(...) end
+        '''
+    )
+    assert len(features.quick_discard_candidates_from_items(mod, lua.globals().scan_curios, lua.table_from({}))) == 120
+    lua.execute("TestCurioValues.resolve = trait_real_resolve")
+    assert lua.globals().trait_resolve_calls == 120, lua.globals().trait_resolve_calls
+    mod.settings.enable_automatic_curio_acquisition = False
+    mod.settings.automatic_curio_buy_health = True
+
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert quick_discard_view._better_inventory_discard_pending is True
     assert globals_.captured_popup.title_text_unlocalized == "quick_discard_confirmation_title"

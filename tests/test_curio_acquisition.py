@@ -577,6 +577,7 @@ def main() -> None:
             state = {
                 game_mode = {
                     game_mode_name = function()
+						game_mode_name_calls = (game_mode_name_calls or 0) + 1
 						return game_mode_name_value
                     end,
                 },
@@ -783,6 +784,31 @@ def main() -> None:
     assert candidate.primary_value == 21
     assert candidate.character_name == "Research Psyker"
     assert candidate.class_name == "Psyker"
+
+    # P24: with diagnostic logging off a scan formats no evaluation messages and
+    # reads the flag once; with it on the same messages are still logged.
+    lua.execute(
+        '''
+        function evaluate_with_diagnostics(logging)
+            settings.automatic_curio_diagnostic_logging = logging
+            captured_logs = {}
+            local diagnostics = {offers = 0, curios = 0, eligible = 0, exclusions = {}}
+            local real_format, format_calls = string.format, 0
+            string.format = function(...) format_calls = format_calls + 1 return real_format(...) end
+            local flag_reads = setting_get_counts.automatic_curio_diagnostic_logging or 0
+            local first = TestCurioStore.normalized_offer(test_mod, target_profile, test_offer, diagnostics)
+            for _ = 1, 20 do TestCurioStore.normalized_offer(test_mod, target_profile, test_offer, diagnostics) end
+            string.format = real_format
+            flag_reads = (setting_get_counts.automatic_curio_diagnostic_logging or 0) - flag_reads
+            settings.automatic_curio_diagnostic_logging = false
+            return first ~= nil, format_calls, #captured_logs, flag_reads, diagnostics.eligible
+        end
+        '''
+    )
+    off_ok, off_formats, off_logs, off_flag_reads, off_eligible = lua.globals().evaluate_with_diagnostics(False)
+    assert off_ok and off_formats == 0 and off_logs == 0 and off_flag_reads == 1 and off_eligible == 21
+    on_ok, on_formats, on_logs, on_flag_reads, on_eligible = lua.globals().evaluate_with_diagnostics(True)
+    assert on_ok and on_formats >= 21 and on_logs == 21 and on_eligible == 21
 
     # Unknown future archetypes are included in class mode until BetterInventory
     # gains a dedicated checkbox instead of being silently excluded by a
@@ -2009,6 +2035,28 @@ def main() -> None:
     assert module.needs_update(globals_.test_mod) is False
     globals_.game_mode_name_value = "hub"
     assert module.needs_update(globals_.test_mod) is True
+
+    # P10: pending profile discovery outside any context (for example the main
+    # menu with Operative Selection scanning off) must not defeat the 1 Hz idle
+    # throttle, while the elapsed time is still accumulated for the timers.
+    globals_.settings.automatic_curio_scan_operative_selection = False
+    globals_.game_mode_name_value = "mission"
+    module.cancel()
+    curio_profiles.request_profile_discovery(True)
+    assert curio_profiles.needs_update() is True
+    lua.execute("game_mode_name_calls = 0")
+    for _ in range(120):
+        module.update(globals_.test_mod, 1 / 60, False)
+    assert globals_.game_mode_name_calls <= 8, globals_.game_mode_name_calls
+    assert curio_profiles.needs_update() is True
+    module.cancel()
+
+    # P21: toggling a character resolves the slot table once, not once per slot
+    # (every read clones the table-valued setting).
+    slot_reads_before = globals_.setting_get_counts["_automatic_curio_character_slots"]
+    assert module.set_character_enabled(globals_.test_mod, "target-psyker", False) is True
+    assert module.set_character_enabled(globals_.test_mod, "target-psyker", True) is True
+    assert globals_.setting_get_counts["_automatic_curio_character_slots"] - slot_reads_before == 2
 
     print("BetterInventory automatic Curio acquisition tests passed.")
 

@@ -128,6 +128,20 @@ def main() -> None:
 		-- An idle interval resets coalescing for the next independent run.
 		state.busy = false
 		assert(Guard.intercept("store.purchase_item", original, {prefix = "ok:"}, "idle") == "ok:idle")
+		-- P23: allowed native calls must not allocate (the notice set is only replaced when non-empty).
+		do
+			local service, constant = {prefix = "ok:"}, function() return "ok" end
+			local hook, hook_mask, hook_count = debug.gethook()
+			debug.sethook()
+			collectgarbage("collect")
+			collectgarbage("stop")
+			local before = collectgarbage("count")
+			for _ = 1, 500 do Guard.intercept("store.purchase_item", constant, service, "x") end
+			local grown = collectgarbage("count") - before
+			collectgarbage("restart")
+			if hook then debug.sethook(hook, hook_mask, hook_count) end
+			assert(grown < 1, "allowed calls allocated " .. grown .. " KB")
+		end
 		state.busy = true
 		state.snapshot = {operation_inflight = true, operation_sequence = 2}
 		notification_count = #notifications

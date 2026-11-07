@@ -210,7 +210,9 @@ function Guard.intercept(kind, original, service, ...)
 
 	if Guard.is_owned_call() or not busy then
 		if not busy then
-			blocked_notice_keys = {}
+			if next(blocked_notice_keys) ~= nil then
+				blocked_notice_keys = {}
+			end
 		end
 
 		return original(service, ...)
