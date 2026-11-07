@@ -679,6 +679,17 @@ AutoCrafter.configure({
 })
 AccountMutationGuard.install_hooks(mod)
 
+local OptionDependencies = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_option_dependencies"), "BetterInventory_option_dependencies.lua", {
+	create = function()
+		return {
+			COLOR_TARGETS = {},
+			color_target_by_setting_id = {},
+			apply_color_preset = function() end,
+			refresh_option_dependencies = function() end,
+			bind_option_dependencies = function() end,
+		}
+	end,
+})
 local Runtime = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime"), "BetterInventory_runtime.lua", {
 	configure = function()
 		return nil
@@ -715,6 +726,7 @@ Runtime.configure({
 	WeaponOptionsPanel = WeaponOptionsPanel,
 	SearchUI = SearchUI,
 	RuntimeLifecycle = RuntimeLifecycle,
+	OptionDependencies = OptionDependencies,
 })
 if type(ProfileSpawnerCompatibility.install) == "function" then
 	ProfileSpawnerCompatibility.install(mod, UIProfileSpawner)

@@ -68,6 +68,7 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Performance: the Auto Crafter perk/blessing target lists are built once per trait catalogue instead of every frame while the Traits section is open.
 - Performance: Weapon Kill Counter cards cache the icon material per item and the formatted kill text per count, and Brunt zero-kill cards resolve their kill count once per pass instead of twice.
 - Performance: search no longer evaluates the perfect-roll check for every item on every presentation just to validate its cache (it is derived from fields the cache already compares).
+- Maintenance: moved the Mod Options dependency greying and colour presets out of `BetterInventory_runtime.lua` into the new `BetterInventory_option_dependencies.lua` (runtime.lua was 99,783 of 100,000 bytes; it is now about 49 KB). Behaviour unchanged.
 
 ## 3.7.4 - Unreleased
 

@@ -408,6 +408,10 @@ def main() -> None:
 				return TestRuntimeLifecycle
 			end
 
+			if string.find(path, "BetterInventory_option_dependencies", 1, true) then
+				return TestOptionDependencies
+			end
+
 			if string.find(path, "BetterInventory_runtime", 1, true) then
 				return TestRuntime
 			end
@@ -542,6 +546,12 @@ def main() -> None:
         ),
         name=str(RUNTIME_PATH.parent / "BetterInventory_runtime_lifecycle.lua"),
     )
+    option_dependencies = lua.execute(
+        (RUNTIME_PATH.parent / "BetterInventory_option_dependencies.lua").read_text(
+            encoding="utf-8"
+        ),
+        name=str(RUNTIME_PATH.parent / "BetterInventory_option_dependencies.lua"),
+    )
     capabilities = lua.execute(
         CONTRACTS_PATH.read_text(encoding="utf-8"),
         name=str(CONTRACTS_PATH),
@@ -558,6 +568,7 @@ def main() -> None:
     lua.globals().TestCharacterOverviewUI = character_overview_ui
     lua.globals().TestRuntime = runtime_module
     lua.globals().TestRuntimeLifecycle = runtime_lifecycle
+    lua.globals().TestOptionDependencies = option_dependencies
     lua.globals().TestCapabilities = capabilities
     lua.globals().TestSettingsRegistry = settings_registry
     lua.globals().TestFeatureDomains = feature_domains
