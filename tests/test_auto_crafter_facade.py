@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from lupa import LuaRuntime
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FACADE_PATH = (
@@ -47,7 +49,7 @@ def main() -> None:
     assert 'kind == "context_exit" or kind == "phase4_complete"' in source
     assert 'games_lantern_queue:stop_requested()' in source
     assert '"stop_settled", { reason = "context_exit_settled" }' in source
-    assert "games_lantern_queue:stop_requested() and not controller:is_busy()" in source
+    assert "games_lantern_queue:stop_requested() and not (busy_ok and busy)" in source
     assert "local controller_snapshot = controller:snapshot()" not in source
 
     # Staged Games Lantern planner selection mirrors Brunt's native weapon
@@ -84,6 +86,74 @@ def main() -> None:
     # perk/blessing labels contain literal percent signs, so runtime text must
     # always be supplied as a value for a constant format string.
     assert 'pcall(logger, mod, "%s", tostring(message))' in source
+
+    # A controller crash must not leave the imported queue "stopping" forever:
+    # is_busy() would stay true and AccountMutationGuard would refuse every
+    # native purchase/craft/delete/favorite for the rest of the session.
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    facade = lua.execute(source, name=str(FACADE_PATH))
+    lua.execute(
+        r'''
+        local facade = ...
+        local function upvalue(name, value)
+            local index = 1
+            while true do
+                local found, current = debug.getupvalue(facade.update, index)
+                if not found then error("missing upvalue " .. name) end
+                if found == name then
+                    if value ~= nil then debug.setupvalue(facade.update, index, value) end
+                    return current
+                end
+                index = index + 1
+            end
+        end
+        local function fake_queue(state)
+            local queue = {state_value = state, stop_wanted = true, events = {}}
+            function queue:state() return self.state_value end
+            function queue:stop_requested() return self.stop_wanted end
+            function queue:on_event(kind)
+                self.events[#self.events + 1] = kind
+                if kind == "stop_settled" then self.state_value = "stopped" end
+            end
+            return queue
+        end
+        local function fake_controller(busy)
+            local controller = {busy = busy}
+            function controller:update() error("boom") end
+            function controller:on_context_exit() end
+            function controller:is_busy() return self.busy end
+            return controller
+        end
+
+        local queue = fake_queue("running")
+        local controller = fake_controller(false)
+        upvalue("controller", controller)
+        upvalue("games_lantern_queue", queue)
+        facade.update(0.1)
+        assert(upvalue("controller_faulted") == true, "controller crash must fault the facade")
+        local hud = facade.hud_presentation()
+        assert(string.find(hud, "controller update failed", 1, true), "crash must reach the HUD")
+
+        -- Queue entered stopping via the controller context_exit report.
+        queue.state_value = "stopping"
+        controller.busy = true
+        facade.update(0.1)
+        assert(queue.state_value == "stopping" and #queue.events == 0, "in-flight work must keep the lock held")
+        assert(facade.is_busy() == true)
+        controller.busy = false
+        facade.update(0.1)
+        assert(queue.state_value == "stopped", "faulted controller must still settle a stopping queue")
+        assert(facade.is_busy() == false)
+
+        -- A dead controller whose is_busy() errors cannot hold work.
+        queue = fake_queue("stopping")
+        upvalue("games_lantern_queue", queue)
+        controller.is_busy = function() error("dead") end
+        facade.update(0.1)
+        assert(queue.state_value == "stopped")
+        ''',
+        facade,
+    )
 
     print("Auto Crafter facade crash-containment checks passed.")
 
