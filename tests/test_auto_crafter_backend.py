@@ -329,6 +329,21 @@ def main() -> None:
 		assert(favorited_ids["crafted-favorite"] == true)
 		assert(color_callbacks == 2)
 
+        -- Expertise/perk/blessing crafting passes no costs, so native
+        -- on_crafting_done never debits the cached wallet. Every wallet re-read
+        -- must invalidate StoreService's cache first or preflight over-reports
+        -- materials and the backend rejects mid-run.
+        for _, method in ipairs({"probe_snapshot", "refresh_runtime_snapshot"}) do
+            local invalidations = 0
+            local services = make_services({})
+            services.store.invalidate_wallets_cache = function() invalidations = invalidations + 1 end
+            local wallet_backend = Backend.new({services = services})
+            wallet_backend._purchase_wallets.credits = {amount = 1000}
+            wallet_backend[method](wallet_backend, {})
+            assert(invalidations == 1, method .. " must invalidate the wallet cache")
+            assert(next(wallet_backend._purchase_wallets) == nil)
+        end
+
         print("Auto Crafter authoritative backend inventory tests passed.")
         '''
     )

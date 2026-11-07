@@ -49,22 +49,22 @@
     {"name": "adaptive_two_line_title_fit", "risk": "high", "start_line": 86, "end_line": 130}
   ],
   "test_auto_crafter_stats.py": [
-      {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 368, "end_line": 576},
-      {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 577, "end_line": 617},
-      {"name": "native_progression_and_custom_stat_planner_validation", "risk": "critical", "start_line": 618, "end_line": 762},
-      {"name": "phase_material_mastery_trait_and_total_resource_estimates", "risk": "high", "start_line": 763, "end_line": 970},
-      {"name": "weapon_mark_label_composition", "risk": "high", "start_line": 971, "end_line": 981},
-      {"name": "stable_panel_snapshot_and_selection_polling", "risk": "high", "start_line": 982, "end_line": 1061},
-      {"name": "workflow_mode_migration_and_dump_comparison_widget", "risk": "critical", "start_line": 1062, "end_line": 1101},
-      {"name": "myfavorites_widget_color_and_active_queue_collapse", "risk": "high", "start_line": 1102, "end_line": 1176},
-      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 1177, "end_line": 1225},
-      {"name": "localized_display_labels", "risk": "high", "start_line": 1226, "end_line": 1240},
-      {"name": "custom_stat_grid_bounds_and_summary", "risk": "critical", "start_line": 1241, "end_line": 1310},
-      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 1311, "end_line": 1399},
-      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 1400, "end_line": 1441},
-      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 1442, "end_line": 1478},
-      {"name": "compact_estimates_deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 1479, "end_line": 1536},
-      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1537, "end_line": 1565}
+    {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 368, "end_line": 578},
+    {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 579, "end_line": 619},
+    {"name": "native_progression_and_custom_stat_planner_validation", "risk": "critical", "start_line": 620, "end_line": 764},
+    {"name": "phase_material_mastery_trait_and_total_resource_estimates", "risk": "high", "start_line": 765, "end_line": 972},
+    {"name": "weapon_mark_label_composition", "risk": "high", "start_line": 973, "end_line": 983},
+    {"name": "stable_panel_snapshot_and_selection_polling", "risk": "high", "start_line": 984, "end_line": 1063},
+    {"name": "workflow_mode_migration_and_dump_comparison_widget", "risk": "critical", "start_line": 1064, "end_line": 1103},
+    {"name": "myfavorites_widget_color_and_active_queue_collapse", "risk": "high", "start_line": 1104, "end_line": 1178},
+    {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 1179, "end_line": 1227},
+    {"name": "localized_display_labels", "risk": "high", "start_line": 1228, "end_line": 1242},
+    {"name": "custom_stat_grid_bounds_and_summary", "risk": "critical", "start_line": 1243, "end_line": 1312},
+    {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 1313, "end_line": 1401},
+    {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 1402, "end_line": 1443},
+    {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 1444, "end_line": 1480},
+    {"name": "compact_estimates_deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 1481, "end_line": 1538},
+    {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1539, "end_line": 1567}
   ],
   "test_auto_crafter_viewport.py": [
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 74},
@@ -74,7 +74,7 @@
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 140},
     {"name": "weapon_mark_catalogue_rejects_non_displayable_records", "risk": "critical", "start_line": 142, "end_line": 190},
     {"name": "weapon_mark_catalogue_versioning_and_release", "risk": "high", "start_line": 191, "end_line": 210},
-    {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 211, "end_line": 338}
+    {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 211, "end_line": 353}
   ],
   "test_auto_crafter_context.py": [
     {"name": "atomic_character_identity_and_switch_settlement", "risk": "critical", "start_line": 16, "end_line": 84},

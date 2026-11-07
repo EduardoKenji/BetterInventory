@@ -36,6 +36,7 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Auto Crafter: a Brunt view closing in the same frame as the selected-weapon poll no longer stops a background run as `selected_weapon_changed`.
 - Auto Crafter: pure mastery/cost GETs are dispatched read-only, so a hung one fails at 15 s instead of the 45 s quarantine.
 - Auto Crafter: a stable character identity no longer reports a `character_context_unavailable` reason.
+- Auto Crafter: invalidate the native wallet cache before each probe/runtime refresh. Expertise, perk and blessing crafting never debited the cached wallet, so later material checks could over-report and the backend reject mid-run.
 
 ## 3.7.4 - Unreleased
 
