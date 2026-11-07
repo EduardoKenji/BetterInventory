@@ -1550,7 +1550,7 @@ function AutoCrafter.update(dt)
 		if games_lantern_queue then
 			local queue_state = games_lantern_queue:state()
 			if queue_state == "selecting" or queue_state == "preflighting" or queue_state == "starting" or queue_state == "waiting_next" then
-				local queue_ok, queue_error = pcall(games_lantern_queue.update, games_lantern_queue)
+				local queue_ok, queue_error = pcall(games_lantern_queue.update, games_lantern_queue, dt)
 
 				if not queue_ok then
 					log("error", "Games Lantern queue update failed: " .. tostring(queue_error))

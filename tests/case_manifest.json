@@ -137,10 +137,10 @@
     {"name": "auto_crafter_lock_lifecycle_and_read_bounds", "risk": "critical", "start_line": 3253, "end_line": 3398}
   ],
   "test_games_lantern_import.py": [
-    {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 18, "end_line": 47},
-    {"name": "versioned_weapon_model", "risk": "critical", "start_line": 49, "end_line": 81},
-    {"name": "bounded_parser_drift_fail_closed", "risk": "critical", "start_line": 82, "end_line": 108},
-    {"name": "malformed_delimiter_budget_and_valid_login_footer", "risk": "critical", "start_line": 109, "end_line": 123}
+    {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 19, "end_line": 48},
+    {"name": "versioned_weapon_model", "risk": "critical", "start_line": 50, "end_line": 82},
+    {"name": "bounded_parser_drift_fail_closed", "risk": "critical", "start_line": 83, "end_line": 109},
+    {"name": "malformed_delimiter_budget_and_valid_login_footer", "risk": "critical", "start_line": 110, "end_line": 136}
   ],
     "test_games_lantern_workflow.py": [
       {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 107},
@@ -157,11 +157,11 @@
       {"name": "mapped_stat_fallback_preserves_traits_and_requires_review", "risk": "critical", "start_line": 679, "end_line": 728},
     {"name": "unknown_mark_rejects_duplicate_normalized_incompatible_stats", "risk": "critical", "start_line": 729, "end_line": 734}
   ],
-    "test_games_lantern_queue.py": [
-      {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 18, "end_line": 101},
-      {"name": "stop_failure_and_boundary_guards", "risk": "critical", "start_line": 102, "end_line": 205},
-      {"name": "staged_queue_single-weapon_removal", "risk": "critical", "start_line": 206, "end_line": 298},
-      {"name": "staged_queue_profile_editor", "risk": "critical", "start_line": 299, "end_line": 332}
+  "test_games_lantern_queue.py": [
+    {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 18, "end_line": 101},
+    {"name": "stop_failure_and_boundary_guards", "risk": "critical", "start_line": 102, "end_line": 225},
+    {"name": "staged_queue_single-weapon_removal", "risk": "critical", "start_line": 226, "end_line": 318},
+    {"name": "staged_queue_profile_editor", "risk": "critical", "start_line": 319, "end_line": 352}
     ],
     "test_games_lantern_custom_stats.py": [
       {"name": "identity_bound_exact_profile_and_malformed_rejection", "risk": "critical", "start_line": 1, "end_line": 74}
@@ -183,7 +183,7 @@
       {"name": "bounded_brunt_selection_sync_and_clear_restore", "risk": "critical", "start_line": 1, "end_line": 223}
     ],
   "test_games_lantern_transport.py": [
-    {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 154}
+    {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 212}
     ],
     "test_games_lantern_import_controller.py": [
       {"name": "atomic_import_lifecycle_stale_callback_and_duplicate_paste_guard", "risk": "critical", "start_line": 11, "end_line": 123},

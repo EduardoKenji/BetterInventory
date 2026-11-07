@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from coverage_support import InstrumentedLuaRuntime as LuaRuntime
@@ -117,6 +118,18 @@ def main() -> None:
     assert len(parser.parse(html.replace("width: 0%", "width: 0%; color: red", 1))["weapons"]) == 2
     for malformed_value in ("-1", "101", "NaN", "60.5", " " * 16000 + "x"):
         assert parser.parse(html.replace("width: 0%", "width: " + malformed_value + "%", 1)) == (None, "invalid_stat")
+
+    # Entities decode once: "&amp;lt;" is the literal text "&lt;", not "<".
+    assert parser._test.unescape_html("A &amp;lt; B &amp;amp; &lt;C&gt;") == "A &lt; B &amp; <C>"
+    entity_html = html.replace("Blaze Force Greatsword", "Blaze &amp;lt;b&amp;gt; Greatsword", 1)
+    assert "&lt;b&gt;" in parser.parse(entity_html)["weapons"][1]["display_name"]
+
+    # Hostile interior whitespace in an attacker-sized capture is rejected before
+    # the trim runs; the old %s+$ scan was quadratic and froze the game thread.
+    started = time.perf_counter()
+    hostile = html.replace("Blaze Force Greatsword", "A" + " " * 30000 + "B", 1)
+    assert parser.parse(hostile) == (None, "incomplete_weapon_identity")
+    assert time.perf_counter() - started < 2.0
 
 
 if __name__ == "__main__":

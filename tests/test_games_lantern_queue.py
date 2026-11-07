@@ -159,18 +159,38 @@ def main() -> None:
                 "select_job": lua.eval("function() return false, 'offer_not_in_native_layout', 12 end"),
                 "view_is_valid": callback_wrapper(lambda: True),
                 "report": callback_wrapper(lambda kind, payload: selection_failures.append((str(kind), payload))),
-                "max_selection_attempts": 1,
+                "max_selection_seconds": 0.05,
             }
         )
     )
     assert selection_timeout.install(selection_timeout, build) is True
     assert selection_timeout.start(selection_timeout) is True
-    selection_timeout.update(selection_timeout)
+    selection_timeout.update(selection_timeout, 0.1)
     assert selection_timeout.snapshot(selection_timeout)["last_error"] == "selection_timeout"
     failure_kind, failure_payload = selection_failures[-1]
     assert failure_kind == "queue_failed"
     assert failure_payload["error"] == "offer_not_in_native_layout"
     assert failure_payload["detail"] == 12
+
+    # The selection timeout is wall time, not frame count: 300 frames at 240 fps
+    # (1.25 s) must not time out, but 4 s of frames must.
+    fast_selection = queue_module.new(
+        to_lua(
+            {
+                "select_job": lua.eval("function() return false, 'offer_not_in_native_layout', 12 end"),
+                "view_is_valid": callback_wrapper(lambda: True),
+                "report": callback_wrapper(lambda kind, payload: None),
+            }
+        )
+    )
+    assert fast_selection.install(fast_selection, build) is True
+    assert fast_selection.start(fast_selection) is True
+    for _ in range(300):
+        fast_selection.update(fast_selection, 1 / 240)
+    assert fast_selection.snapshot(fast_selection)["state"] == "selecting"
+    for _ in range(1000):
+        fast_selection.update(fast_selection, 1 / 240)
+    assert fast_selection.snapshot(fast_selection)["last_error"] == "selection_timeout"
 
     # View loss is checked at the transition boundary, before job 2.
     boundary_starts = []

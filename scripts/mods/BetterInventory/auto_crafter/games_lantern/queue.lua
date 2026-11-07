@@ -114,10 +114,11 @@ function Queue.new(dependencies)
 		_selected_job_id = nil,
 		_configured_job_id = nil,
 		_character_id = nil,
-		_selection_attempts = 0,
+		_selection_elapsed = 0,
+		_frame_dt = 0,
 		_last_selection_error = nil,
 		_last_selection_detail = nil,
-		_max_selection_attempts = tonumber(dependencies.max_selection_attempts) or 240,
+		_max_selection_seconds = tonumber(dependencies.max_selection_seconds) or 4,
 	}
 
 	local function emit(kind, payload)
@@ -225,8 +226,8 @@ function Queue.new(dependencies)
 
 		if self._selected_job_id ~= job.job_id then
 			self._state = "selecting"
-			self._selection_attempts = self._selection_attempts + 1
-			if self._selection_attempts > self._max_selection_attempts then
+			self._selection_elapsed = self._selection_elapsed + self._frame_dt
+			if self._selection_elapsed > self._max_selection_seconds then
 				return fail("selection_timeout", { index = self._current_index, error = self._last_selection_error, detail = self._last_selection_detail })
 			end
 
@@ -324,7 +325,7 @@ function Queue.new(dependencies)
 		self._last_error = nil
 		self._last_event = nil
 		self._stop_requested = false
-		self._selection_attempts = 0
+		self._selection_elapsed = 0
 		self._last_selection_error = nil
 		self._last_selection_detail = nil
 		self._transition_count = 0
@@ -351,7 +352,8 @@ function Queue.new(dependencies)
 
 		self._stop_requested = false
 		self._last_error = nil
-		self._selection_attempts = 0
+		self._selection_elapsed = 0
+		self._frame_dt = 0
 		self._state = "starting"
 		begin_current()
 
@@ -472,7 +474,8 @@ function Queue.new(dependencies)
 		return false
 	end
 
-	function self:update()
+	function self:update(dt)
+		self._frame_dt = math.max(0, tonumber(dt) or 1 / 60)
 		if self._state == "selecting" or self._state == "preflighting" or self._state == "starting" then
 			begin_current()
 		elseif self._state == "waiting_next" then
@@ -483,7 +486,7 @@ function Queue.new(dependencies)
 				self._last_error = nil
 				emit("queue_stopped", { index = self._current_index, queue_id = self._queue_id, reason = "brunt_view_closed_at_boundary" })
 			else
-				self._selection_attempts = 0
+				self._selection_elapsed = 0
 				begin_current()
 			end
 		end
