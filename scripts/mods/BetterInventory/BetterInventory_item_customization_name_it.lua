@@ -202,8 +202,13 @@ Adapter.reconcile = function(mod, store)
 		if type(gear_id) == "string" and type(external_name) == "string" and external_name ~= "" then
 			local record = type(records[gear_id]) == "table" and records[gear_id] or {}
 
-			record.name = external_name
-			record.name_target = replace_pattern and "sub" or "primary"
+			-- Only a changed name is retagged from Name It's global flag; an
+			-- unchanged one keeps the target it already had.
+			if record.name ~= external_name then
+				record.name = external_name
+				record.name_target = replace_pattern and "sub" or "primary"
+			end
+
 			records[gear_id] = record
 		end
 	end

@@ -19,6 +19,8 @@ local function normalize_name(value)
 	end
 
 	-- Keep names single-line and prevent invisible whitespace-only records.
+	-- NBSP (U+00A0) is not matched by %s; grid cards write it into display names.
+	value = string.gsub(value, "\194\160", " ")
 	value = string.gsub(value, "[%c]", " ")
 	value = string.gsub(value, "%s+", " ")
 	value = string.gsub(value, "^%s+", "")

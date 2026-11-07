@@ -228,15 +228,15 @@
     {"name": "diagnostic_toggle", "risk": "medium", "start_line": 30, "end_line": 61}
   ],
   "test_equipment_persistence.py": [
-    {"name": "authoritative_reconciliation", "risk": "critical", "start_line": 238, "end_line": 261},
-    {"name": "bounded_retry", "risk": "critical", "start_line": 262, "end_line": 295},
-    {"name": "stale_callback_guard", "risk": "critical", "start_line": 296, "end_line": 337},
-    {"name": "retry_invocation_safety", "risk": "critical", "start_line": 338, "end_line": 357},
-    {"name": "closed_view_release_and_reset", "risk": "critical", "start_line": 358, "end_line": 382},
-    {"name": "superseded_operation_graph_retirement", "risk": "critical", "start_line": 383, "end_line": 398},
-    {"name": "unresolved_promise_timeout_retirement", "risk": "critical", "start_line": 399, "end_line": 418},
-    {"name": "cross_character_view_isolation", "risk": "critical", "start_line": 420, "end_line": 447},
-    {"name": "unowned_preview_filtering", "risk": "critical", "start_line": 448, "end_line": 476}
+    {"name": "authoritative_reconciliation", "risk": "critical", "start_line": 249, "end_line": 272},
+    {"name": "bounded_retry", "risk": "critical", "start_line": 273, "end_line": 306},
+    {"name": "stale_callback_guard", "risk": "critical", "start_line": 307, "end_line": 370},
+    {"name": "retry_invocation_safety", "risk": "critical", "start_line": 371, "end_line": 390},
+    {"name": "closed_view_release_and_reset", "risk": "critical", "start_line": 391, "end_line": 415},
+    {"name": "superseded_operation_graph_retirement", "risk": "critical", "start_line": 416, "end_line": 431},
+    {"name": "unresolved_promise_timeout_retirement", "risk": "critical", "start_line": 432, "end_line": 451},
+    {"name": "cross_character_view_isolation", "risk": "critical", "start_line": 453, "end_line": 480},
+    {"name": "unowned_preview_filtering", "risk": "critical", "start_line": 481, "end_line": 509}
   ],
   "test_feature_domains.py": [
     {"name": "marker_generation", "risk": "high", "start_line": 19, "end_line": 35},
@@ -256,9 +256,9 @@
     {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3460, "end_line": 4002}
   ],
   "test_item_customization.py": [
-    {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 442},
-    {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 443, "end_line": 764},
-    {"name": "callback_failure_safety", "risk": "high", "start_line": 765, "end_line": 1003}
+    {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 451},
+    {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 452, "end_line": 811},
+    {"name": "callback_failure_safety", "risk": "high", "start_line": 812, "end_line": 1066}
   ],
   "test_material_safety.py": [
     {"name": "dynamic_material_repair", "risk": "critical", "start_line": 1, "end_line": 365}

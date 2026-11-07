@@ -1668,8 +1668,8 @@ if ensure_class_method(InventoryBackgroundView, "_equip_local_changes") then
 end
 
 if ensure_class_method(InventoryBackgroundView, "event_player_profile_updated") then
-	mod:hook_safe(InventoryBackgroundView, "event_player_profile_updated", function(view, peer_id, local_player_id)
-		EquipmentPersistence.refresh_from_authoritative_profile(view, peer_id, local_player_id)
+	mod:hook_safe(InventoryBackgroundView, "event_player_profile_updated", function(view, peer_id, local_player_id, event_profile)
+		EquipmentPersistence.refresh_from_authoritative_profile(view, peer_id, local_player_id, event_profile)
 		invalidate_myfavorites_grid(view and view._item_grid)
 	end)
 end

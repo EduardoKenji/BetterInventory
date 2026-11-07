@@ -559,7 +559,7 @@ local function show_name_editor(mod, context, layout)
 	end
 
 	local record = Customization.get(mod, context.gear_id)
-	input_widget.content.input_text = record and record.name or context.name or ""
+	input_widget.content.input_text = record and record.name or context.default_name or context.name or ""
 	input_widget.content.visible = true
 	input_widget.content.is_writing = true
 	show_input_field = true
