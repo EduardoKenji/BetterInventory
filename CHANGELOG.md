@@ -70,6 +70,7 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Performance: search no longer evaluates the perfect-roll check for every item on every presentation just to validate its cache (it is derived from fields the cache already compares).
 - Maintenance: moved the Mod Options dependency greying and colour presets out of `BetterInventory_runtime.lua` into the new `BetterInventory_option_dependencies.lua` (runtime.lua was 99,783 of 100,000 bytes; it is now about 49 KB). Behaviour unchanged.
 - Options panel: eleven Auto Crafter rows (defer bad weapon processing, include favourite inventory bases, allocate mastery points, change perks/blessings, perk/blessing targets and grids) were greyed by the dependency logic but never bound, so they never greyed out. One declarative rule table in `BetterInventory_option_dependencies.lua` now drives both the binding list and the greying, so the two cannot drift again (audit B19).
+- Internal: removed dead Auto Crafter code (unreachable controller branches, the test-only single-weapon mastery path, unused panel variants and the test-only `Resolver.resolve`), factored repeated controller/panel blocks into helpers, and gave the Games Lantern queue/import one set of busy/stoppable state predicates instead of ~14 hand-copied lists. No behaviour change; `controller.lua` and `panel.lua` shrink by about 6 KB and 3 KB (they were at the 100,000-byte module limit).
 
 ## 3.7.4 - Unreleased
 
