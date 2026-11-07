@@ -4764,6 +4764,16 @@ def main() -> None:
         == 1
     )
 
+    # A rename/recolor refresh refits the title and restores the preferred font
+    # size, which the fitter otherwise only ever shrinks.
+    name_it_curio_widget.content.display_name = "Icon"
+    name_it_title_pass.style.font_size = 9
+    assert layout.refresh_item_customization(
+        mod, name_it_curio_widget, long_name_it_curio_element, None, lua.table_from({})
+    )
+    assert name_it_curio_widget.content.display_name == "Icon"
+    assert name_it_title_pass.style.font_size == 16
+
     character_overview_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_native_item_blueprint(
         mod,
@@ -5906,6 +5916,11 @@ def main() -> None:
     assert widget.content.better_inventory_blessing_text_2.endswith("...")
     assert styles["better_inventory_blessing_text_2"].font_size == 8
     assert styles["better_inventory_blessing_text_2"].word_wrap is False
+    # Recolor/rename refreshes rewrite display_name unfitted; they must refit it.
+    widget.style.display_name.size = lua.table_from({60, 25})
+    assert layout.refresh_item_customization(mod, widget, overflow, live_parent)
+    assert widget.content.display_name != "Combat Blade Mk VI"
+    assert len(widget.content.display_name) < len("Combat Blade Mk VI")
     # Native GlobalStore cards re-anchor the icon, price, wallet, portrait and
     # character rows to the store footer.
     store_card = lua.eval("table.clone")(globals_.raw_test_blueprint)
@@ -5922,6 +5937,98 @@ def main() -> None:
     assert blueprint_pass(store_card, "price_text").style.offset[1] == 39
     assert blueprint_pass(store_card, "owned_text").style.size[2] == 24
     assert blueprint_pass(store_card, "item_level").style.vertical_alignment == "bottom"
+    # A native_single_column configuration with grid layout on (GlobalStore
+    # grid off) must use the native blueprint and must not be written into.
+    mod.settings.enable_grid_layout = True
+    mod.settings.columns = 3
+    native_store_card = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    native_store_configuration = lua.table_from(
+        {"native_single_column": True, "store_item": True, "global_store": True}
+    )
+    native_store_size = layout.configure_item_blueprint(
+        mod, native_store_card, 596, native_store_configuration
+    )
+    assert native_store_size[1] == 586
+    assert native_store_configuration.card_height is None
+    assert native_store_configuration.curio_rating_top is None
+
+    # Melk limited cards lift the blessing block 5 px, so card_height reserves it.
+    mod.settings.automatic_card_height = True
+    mod.settings.weapon_blessing_display_mode = "icons"
+    mod.settings.blessing_icon_size = 48
+    melk_base = layout.card_height(
+        mod, lua.table_from({"maximum_columns": 3, "store_item": True})
+    )
+    melk_height = layout.card_height(
+        mod,
+        lua.table_from(
+            {"maximum_columns": 3, "store_item": True, "melk_limited": True}
+        ),
+    )
+    assert melk_height == melk_base + 5
+
+    # Overview blueprints record the rendered item so the == fast path works,
+    # and a same-gear_id revision refreshes once instead of on every frame.
+    assert lua.execute(r"""
+        local overview = TestOverviewUI
+        local settings = test_mod.settings
+        settings.curio_display_profile = "detailed"
+        settings.character_overview_use_native_curio_overlay = false
+        local native = table.clone(raw_test_blueprint)
+        local native_title_pass = overview.pass_by_style_id(native.pass_template, "display_name")
+        native_title_pass.pass_type = "text"
+        native_title_pass.style.horizontal_alignment = "right"
+        native_title_pass.style.offset = {-20, 10, 5}
+        native_title_pass.style.size = {native.size[1] - 40, 40}
+        local native_calls = 0
+        -- Darktide's native update only replaces content.item when gear_id differs.
+        native.update = function(parent, widget)
+            native_calls = native_calls + 1
+            local content = widget.content
+            local current = parent:equipped_item_in_slot(content.element.slot.name)
+            if (current and not content.item) or (not current and content.item) or (current and content.item.gear_id ~= current.gear_id) then
+                content.item = current
+            end
+        end
+        local gadget = table.clone(native)
+        gadget.size = {193, 250}
+        overview.configure({
+            mod = test_mod, Layout = TestOverviewLayout, Text = TestText,
+            CharacterOverview = TestOverviewModel,
+            InventoryViewContentBlueprints = {item_slot = native, gadget_item_slot = gadget},
+            ItemBlueprintGenerator = function() return {item = native} end,
+        })
+        local function widget_for(bp, item, slot_name)
+            local w = {content = {item = item, unlocked = true, element = {slot = {name = slot_name}, item = item}}, style = {}}
+            for _, p in ipairs(bp.pass_template) do
+                if p.style_id then w.style[p.style_id] = table.clone(p.style) end
+            end
+            return w
+        end
+        for _, case in ipairs({
+            {bp = overview.character_overview_weapon_blueprint(nil, "melee"), slot = "slot_primary", type = "WEAPON_MELEE"},
+            {bp = overview.character_overview_curio_blueprint(), slot = "slot_attachment_1", type = "GADGET"},
+        }) do
+            local equipped = {gear_id = "g1", item_type = case.type, name = "Name", rarity = 3}
+            local parent = {_ui_renderer = {}, equipped_item_in_slot = function() return equipped end}
+            local w = widget_for(case.bp, {gear_id = "g1", item_type = case.type, name = "Name", rarity = 3}, case.slot)
+            local before = native_calls
+            -- Same gear_id and revision in a new table: no refresh, but the new
+            -- object is recorded so later frames take the == fast path.
+            case.bp.update(parent, w, nil, 0, 0, {})
+            assert(native_calls == before, case.type)
+            assert(w.content.item == equipped, case.type)
+            -- Same gear_id with changed content refreshes once, not every frame.
+            equipped = {gear_id = "g1", item_type = case.type, name = "Renamed", rarity = 4}
+            case.bp.update(parent, w, nil, 0, 0, {})
+            assert(native_calls == before + 1, case.type)
+            assert(w.content.item == equipped, case.type)
+            case.bp.update(parent, w, nil, 0, 0, {})
+            case.bp.update(parent, w, nil, 0, 0, {})
+            assert(native_calls == before + 1, case.type)
+        end
+        return true
+    """)
     print("BetterInventory layout behavior tests passed.")
 
 

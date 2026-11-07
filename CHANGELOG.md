@@ -59,6 +59,11 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Inventory: the Games Lantern recommendation panel reacts to a weapon-preview change on the next frame instead of at the next periodic probe.
 - Options panel: the legacy quick-discard mode and rarity labels end in a plain `  >` instead of mojibake.
 - Errors thrown by native or other mods' grid presenters are rethrown unchanged (level 0), so crash logs no longer blame BetterInventory.
+- Layout: with the grid layout on and the GlobalStore grid off, GlobalStore cards now use the native single-column blueprint (they previously went down the grid path with up to 5 columns), and the shared native configuration is cloned so card height and Curio rating offsets are no longer written into the constant.
+- Layout: after a rename or recolor from the item editor, the card name is refit (non-wrapping NBSP name, crop, Curio two-line title) and the Curio title font size is restored to its preferred size instead of staying at the last shrunk size.
+- Character Overview: renaming a Curio now clears the overview widget's fit state, so the new name is refit instead of drawing with the old name's fitting.
+- Character Overview: weapon and Curio widgets record the rendered item after every update, so a same-gear replacement object takes the cheap `==` fast path and a same-gear item revision refreshes once instead of re-running the full update and text wrapping every frame.
+- Layout: Melk limited-offer cards reserve the 5 px of footer their blessing block is lifted by, so it no longer rises into the name rows.
 
 ## 3.7.4 - Unreleased
 

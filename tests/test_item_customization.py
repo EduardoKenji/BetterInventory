@@ -818,12 +818,16 @@ def main() -> None:
 
     # Saving refreshes both the selected inventory card and the matching card
     # already alive in the character overview underneath it.
-    overview_item = lua.table_from({"gear_id": "gear-1"})
+    overview_item = lua.table_from({"gear_id": "gear-1", "item_type": "GADGET"})
     overview_widget = lua.table_from(
         {
             "marker": "overview",
             "content": lua.table_from(
-                {"element": lua.table_from({"item": overview_item})}
+                {
+                    "element": lua.table_from({"item": overview_item}),
+                    "better_inventory_curio_fit_initialized": True,
+                    "better_inventory_fitted_curio_name": "Old fitted",
+                }
             )
         }
     )
@@ -844,6 +848,10 @@ def main() -> None:
     assert len(globals_.refresh_calls) == 2
     assert globals_.refresh_calls[1].marker == "selected"
     assert globals_.refresh_calls[2].marker == "overview"
+    # The overview Curio fitter skips initialized widgets, so a rename/recolor
+    # must clear its fit state for the next update to refit the new name.
+    assert overview_widget.content.better_inventory_curio_fit_initialized is None
+    assert overview_widget.content.better_inventory_fitted_curio_name is None
 
     # Name It's Hadron action is retained, but routed to BetterInventory while
     # this module owns names and restored as the fallback when it does not.

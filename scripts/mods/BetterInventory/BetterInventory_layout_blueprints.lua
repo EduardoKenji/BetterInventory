@@ -415,7 +415,7 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 	return item_size
 end
 Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, configuration)
-	if not setting(mod, "enable_grid_layout", true) then
+	if not setting(mod, "enable_grid_layout", true) or (configuration and configuration.native_single_column == true) then
 		configuration = configuration or {}
 		return Blueprints.configure_native_item_blueprint(mod, item_blueprint, grid_width, configuration)
 	end

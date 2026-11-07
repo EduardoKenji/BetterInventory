@@ -436,6 +436,8 @@ Geometry.card_height = function(mod, configuration)
 	local bottom_region_height = math.max(expertise_font_size + 10, secondary_font_size + 15)
 	local required_height = global_store_extra > 0 and manual_height or 110
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT + global_store_extra_height(mod, configuration) or 0
+	-- Melk cards lift the blessing block by 5 px (see layout_cards blessing_footer_height).
+	local weapon_footer_height = store_footer_height + (configuration.melk_limited and 5 or 0)
 
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
 	local blessing_text_mode = blessing_display_mode == "text" or blessing_display_mode == "ranked_text"
@@ -444,7 +446,7 @@ Geometry.card_height = function(mod, configuration)
 		local configured_blessing_size = blessing_icon_size(mod)
 
 		if configuration.store_item then
-			bottom_region_height = store_footer_height + configured_blessing_size + 6
+			bottom_region_height = weapon_footer_height + configured_blessing_size + 6
 		else
 			bottom_region_height = math.max(bottom_region_height, configured_blessing_size + 6)
 		end
@@ -460,14 +462,14 @@ Geometry.card_height = function(mod, configuration)
 		end
 
 		if configuration.store_item then
-			bottom_region_height = store_footer_height + blessing_text_height
+			bottom_region_height = weapon_footer_height + blessing_text_height
 		elseif separate_blessing_text_and_item_level(mod, configuration) then
 			bottom_region_height = bottom_region_height + blessing_text_height
 		else
 			bottom_region_height = math.max(bottom_region_height, blessing_text_height)
 		end
 	elseif configuration.store_item then
-		bottom_region_height = math.max(bottom_region_height, store_footer_height)
+		bottom_region_height = math.max(bottom_region_height, weapon_footer_height)
 	end
 
 	if setting(mod, "show_weapon_perks", true) then
