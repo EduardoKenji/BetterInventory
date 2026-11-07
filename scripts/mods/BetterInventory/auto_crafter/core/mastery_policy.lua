@@ -334,6 +334,9 @@ function MasteryPolicy.wallet_consumption(start_wallet, current_wallet)
 		plasteel = math.max(0, (tonumber(start_wallet.plasteel) or 0) - (tonumber(current_wallet.plasteel) or 0)),
 	}
 end
+
+local DIAGNOSTIC_FIELD_COUNT = 17
+
 -- Single-line diagnostic log text for a controller report event.
 function MasteryPolicy.diagnostic_message(state, kind, payload)
 	payload = payload or {}
@@ -348,24 +351,25 @@ function MasteryPolicy.diagnostic_message(state, kind, payload)
 	local search = payload.search or state._search
 	local current = payload.current or type(payload.phase3) == "table" and payload.phase3.current or state._phase3 and state._phase3.current
 	local candidate = payload.candidate or payload.current_item
+	-- Flat name/value pairs (values may be nil, so iterate a fixed count).
 	local values = {
-		{ "kind", payload.kind },
-		{ "reason", payload.reason },
-		{ "error", payload.error },
-		{ "gear", payload.gear_id or candidate and candidate.gear_id },
-		{ "count", payload.count },
-		{ "amount", payload.amount },
-		{ "expected_xp", payload.expected_xp },
-		{ "attempt", payload.attempt or payload.attempts },
-		{ "retry", payload.retry },
-		{ "mastery", current and current.mastery_level },
-		{ "claimed", current and current.claimed_level },
-		{ "xp", current and current.current_xp },
-		{ "purchases", search and search.purchases },
-		{ "fodder", payload.fodder_count or state._phase3 and state._phase3.fodder_count },
-		{ "rarity", candidate and candidate.rarity },
-		{ "expertise", candidate and candidate.expertise_level },
-		{ "duration", payload.duration and string.format("%.3fs", payload.duration) },
+		"kind", payload.kind,
+		"reason", payload.reason,
+		"error", payload.error,
+		"gear", payload.gear_id or candidate and candidate.gear_id,
+		"count", payload.count,
+		"amount", payload.amount,
+		"expected_xp", payload.expected_xp,
+		"attempt", payload.attempt or payload.attempts,
+		"retry", payload.retry,
+		"mastery", current and current.mastery_level,
+		"claimed", current and current.claimed_level,
+		"xp", current and current.current_xp,
+		"purchases", search and search.purchases,
+		"fodder", payload.fodder_count or state._phase3 and state._phase3.fodder_count,
+		"rarity", candidate and candidate.rarity,
+		"expertise", candidate and candidate.expertise_level,
+		"duration", payload.duration and string.format("%.3fs", payload.duration),
 	}
 	local timings = payload.timings
 
@@ -377,12 +381,13 @@ function MasteryPolicy.diagnostic_message(state, kind, payload)
 		end
 
 		table.sort(timing_fields)
-		values[#values + 1] = { "timings", table.concat(timing_fields, ",") }
+		values[DIAGNOSTIC_FIELD_COUNT * 2 + 1] = "timings"
+		values[DIAGNOSTIC_FIELD_COUNT * 2 + 2] = table.concat(timing_fields, ",")
 	end
 
-	for _, entry in ipairs(values) do
-		if entry[2] ~= nil then
-			fields[#fields + 1] = entry[1] .. "=" .. tostring(entry[2])
+	for index = 1, (DIAGNOSTIC_FIELD_COUNT + (type(timings) == "table" and 1 or 0)) * 2, 2 do
+		if values[index + 1] ~= nil then
+			fields[#fields + 1] = values[index] .. "=" .. tostring(values[index + 1])
 		end
 	end
 

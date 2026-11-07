@@ -263,9 +263,17 @@ function OptionDependencies.create(context)
 			local enabled, reason = active_state.refresh()
 
 			entry.disabled = not enabled
-			entry.disabled_by = enabled and nil or {
-				reason,
-			}
+
+			if enabled then
+				entry.disabled_by = nil
+			else
+				-- Runs every frame while Mod Options is open: keep one reason table per entry.
+				local list = entry._better_inventory_live_dependency_reason or {}
+
+				list[1] = reason
+				entry._better_inventory_live_dependency_reason = list
+				entry.disabled_by = list
+			end
 
 			return active_state.original(...)
 		end

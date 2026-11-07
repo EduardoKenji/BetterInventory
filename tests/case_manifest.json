@@ -18,7 +18,7 @@
     {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 506}
   ],
   "test_search_ui.py": [
-    {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 839}
+    {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 865}
   ],
   "test_search_hooks.py": [
     {"name": "native_grid_input_and_hadron_sacrifice_exclusion", "risk": "high", "start_line": 1, "end_line": 277}
@@ -85,8 +85,8 @@
   "test_auto_crafter_facade.py": [
     {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 16, "end_line": 242}
     ],
-    "test_auto_crafter_hud_policy.py": [
-      {"name": "terminal_dirty_wakeup_bounded_expiry_and_phase_labels", "risk": "critical", "start_line": 1, "end_line": 101}
+  "test_auto_crafter_hud_policy.py": [
+    {"name": "terminal_dirty_wakeup_bounded_expiry_and_phase_labels", "risk": "critical", "start_line": 1, "end_line": 157}
     ],
     "test_auto_crafter_custom_fallback.py": [
       {"name": "acquisition_mode_migration_dump_comparison_and_custom_fallback", "risk": "critical", "start_line": 1, "end_line": 125}
@@ -294,8 +294,8 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 488, "end_line": 640},
     {"name": "character_overview_transition_retirement", "risk": "critical", "start_line": 641, "end_line": 676},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 677, "end_line": 1912},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1913, "end_line": 3168},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3169, "end_line": 4217}
+    {"name": "localization_contract", "risk": "medium", "start_line": 1913, "end_line": 3183},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3184, "end_line": 4232}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},
@@ -321,7 +321,7 @@
     {"name": "queue_stop_polling_preserves_busy_guards_without_snapshots", "risk": "critical", "start_line": 102, "end_line": 147}
   ],
   "test_auto_crafter_host_boundaries.py": [
-    {"name": "clipboard_fallback_and_hud_lifecycle", "risk": "high", "start_line": 1, "end_line": 80}
+    {"name": "clipboard_fallback_and_hud_lifecycle", "risk": "high", "start_line": 1, "end_line": 104}
   ],
   "test_coverage_reporting.py": [
     {"name": "recursive_paths_no_basename_aliasing_or_silent_omissions", "risk": "critical", "start_line": 1, "end_line": 41}

@@ -119,6 +119,7 @@ def main() -> None:
         ''',
     )
     search_ui = lua.execute(MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH))
+    lua.globals().SearchUIUnderTest = search_ui
 
     definitions = lua.table_from(
         {
@@ -149,6 +150,31 @@ def main() -> None:
         decorated, view, lua.globals().test_mod
     )
     assert lua.execute("return decorated_once == decorated_twice") is True
+    # P19: one deep clone per decoration; the sub-tables stay private to the
+    # decorated copy (source definitions untouched, missing ones created).
+    lua.globals().clone_probe_definitions = lua.table_from(
+        {
+            "grid_settings": lua.table_from({"title_height": 108}),
+            "scenegraph_definition": lua.table_from({"item_grid_pivot": lua.table_from({})}),
+            "widget_definitions": lua.table_from({"native": lua.table_from({})}),
+        }
+    )
+    lua.globals().clone_probe_view = view
+    lua.execute(
+        '''
+        local real_clone, clone_calls = table.clone, 0
+        table.clone = function(...) clone_calls = clone_calls + 1 return real_clone(...) end
+        local probed = SearchUIUnderTest.decorate_definitions(clone_probe_definitions, clone_probe_view, test_mod)
+        table.clone = real_clone
+        assert(clone_calls == 1, "deep clones per decoration: " .. clone_calls)
+        assert(probed.grid_settings ~= clone_probe_definitions.grid_settings and probed.grid_settings.top_padding ~= nil)
+        assert(probed.scenegraph_definition ~= clone_probe_definitions.scenegraph_definition)
+        assert(probed.widget_definitions ~= clone_probe_definitions.widget_definitions and probed.widget_definitions.native ~= clone_probe_definitions.widget_definitions.native)
+        assert(clone_probe_definitions.grid_settings.top_padding == nil and clone_probe_definitions.scenegraph_definition.better_inventory_search_input == nil)
+        local sparse = SearchUIUnderTest.decorate_definitions({scenegraph_definition = {item_grid_pivot = {}}}, clone_probe_view, test_mod)
+        assert(type(sparse.grid_settings) == "table" and type(sparse.widget_definitions) == "table")
+        '''
+    )
 
     # A single search row extends native content padding without moving native
     # title geometry. Armoury Requisition and Multi-Operative Supply share the

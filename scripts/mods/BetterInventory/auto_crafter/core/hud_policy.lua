@@ -25,11 +25,16 @@ function HudPolicy.run_active(snapshot)
 		or false
 end
 
-function HudPolicy.completion_key(snapshot)
+function HudPolicy.completion_ready(snapshot)
 	local phase4 = snapshot and snapshot.phase4
 
-	if snapshot and not snapshot.last_error and type(phase4) == "table" and phase4.running ~= true and phase4.elapsed_seconds ~= nil then
+	return snapshot ~= nil and snapshot ~= false and not snapshot.last_error and type(phase4) == "table" and phase4.running ~= true and phase4.elapsed_seconds ~= nil
+end
+
+function HudPolicy.completion_key(snapshot)
+	if HudPolicy.completion_ready(snapshot) then
 		local search = snapshot.search or {}
+		local phase4 = snapshot.phase4
 
 		return table.concat({
 			tostring(snapshot.terminal_sequence or ""),
@@ -43,11 +48,11 @@ function HudPolicy.completion_key(snapshot)
 end
 
 function HudPolicy.completion_visible(snapshot, elapsed)
-	return HudPolicy.completion_key(snapshot) ~= nil and finite_nonnegative(elapsed) <= COMPLETION_VISIBLE_SECONDS
+	return HudPolicy.completion_ready(snapshot) and finite_nonnegative(elapsed) <= COMPLETION_VISIBLE_SECONDS
 end
 
 function HudPolicy.completion_pending(snapshot, line_count)
-	return HudPolicy.completion_key(snapshot) ~= nil and (tonumber(line_count) or 0) > 0
+	return HudPolicy.completion_ready(snapshot) and (tonumber(line_count) or 0) > 0
 end
 
 function HudPolicy.presentation_needs_update(snapshot, line_count, dirty)

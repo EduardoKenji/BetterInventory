@@ -2338,6 +2338,21 @@ def main() -> None:
     mod.on_setting_changed("character_overview_show_only_dump_stat")
     for dump_style_id in dump_style_ids:
         assert entries_by_id[dump_style_id].disabled is True
+    # P8: the per-frame getter reuses one reason table per entry and still follows the settings.
+    lua_rawequal_early = lua.eval("function(left, right) return rawequal(left, right) end")
+    for dump_style_id in dump_style_ids:
+        entries_by_id[dump_style_id].get_function()
+        first_reason = entries_by_id[dump_style_id].disabled_by
+        for _ in range(5):
+            entries_by_id[dump_style_id].get_function()
+        assert lua_rawequal_early(entries_by_id[dump_style_id].disabled_by, first_reason)
+        assert len(first_reason) == 1 and entries_by_id[dump_style_id].disabled is True
+    settings.character_overview_show_only_dump_stat = True
+    entries_by_id[dump_style_ids[0]].get_function()
+    assert entries_by_id[dump_style_ids[0]].disabled is False and entries_by_id[dump_style_ids[0]].disabled_by is None
+    settings.character_overview_show_only_dump_stat = False
+    entries_by_id[dump_style_ids[0]].get_function()
+    assert entries_by_id[dump_style_ids[0]].disabled is True and len(entries_by_id[dump_style_ids[0]].disabled_by) == 1
 
     # DMF caches generated template trees per options-view instance. A later
     # generation must not strand the still-live first tree with stale states.
