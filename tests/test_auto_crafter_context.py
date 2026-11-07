@@ -50,6 +50,7 @@ def main() -> None:
 
     identity = context.current_identity(context)
     assert identity.stable is True
+    assert identity.reason is None
     assert identity.character_id == "character-old"
     assert identity.archetype == "veteran"
 
