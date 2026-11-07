@@ -1,6 +1,6 @@
 {
   "archive_root": "BetterInventory",
-  "file_count": 93,
+  "file_count": 94,
   "files": [
     {
       "archive_path": "BetterInventory/BetterInventory.mod",
@@ -16,8 +16,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory.lua",
-      "bytes": 32535,
-      "sha256": "1ab9ae702bb15a5627fd373ce5932d08e2e325b40047d638a7b9ce72e96161a7",
+      "bytes": 33000,
+      "sha256": "1dca970ddd91104d7d890963241e93b2e643d8e34f670586b2a270704559c107",
       "source_path": "scripts/mods/BetterInventory/BetterInventory.lua"
     },
     {
@@ -309,6 +309,12 @@
       "source_path": "scripts/mods/BetterInventory/BetterInventory_operation_arbiter.lua"
     },
     {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_option_dependencies.lua",
+      "bytes": 41088,
+      "sha256": "c0bb74f496dc69b777140ad47481a9879a0d9037174a1032d64693768727389f",
+      "source_path": "scripts/mods/BetterInventory/BetterInventory_option_dependencies.lua"
+    },
+    {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_panel_definitions.lua",
       "bytes": 46080,
       "sha256": "865bbc07520a2127ab6cd970c5e7954b3e262902dfe5eade1396cfb950ba6386",
@@ -334,8 +340,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime.lua",
-      "bytes": 99783,
-      "sha256": "78de67330746c5955aba32d57bb7957edb96ef677c22012070d8b0a141e4e85f",
+      "bytes": 49367,
+      "sha256": "b5ed940913f8462d176eba424a96b05978ccb9d2070f6283390f04860b69ace0",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_runtime.lua"
     },
     {
@@ -561,6 +567,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "6e0e37b2fed5c9d28a3ddb66698635cf71693c74f355c52c0a203c46cb7c6504",
+  "runtime_tree_sha256": "225f6ef2a18a1c7f4971348059cb7f6ec6bd832f91490409403f061c41bf34f9",
   "version": "3.9.0"
 }

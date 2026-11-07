@@ -43,6 +43,7 @@ $main = @(
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_character_overview.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_character_overview_ui.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_runtime.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_option_dependencies.lua") -Raw
 ) -join "`n"
 $curioVisualPlan = Get-Content -LiteralPath (Join-Path $projectRoot "docs\v1.9.4-curio-card-visuals-plan.md") -Raw
 

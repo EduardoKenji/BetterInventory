@@ -124,10 +124,9 @@ mark itself missing it means stat resolution is broken, so the run fails fast.
 ## Codebase rules that bite
 
 - **Size limit:** each runtime module must be 100,000 bytes or less
-  (`tests/check_architecture.py`). `auto_crafter/core/controller.lua`,
-  `BetterInventory_runtime.lua` and `BetterInventory_features.lua` sit near the
-  limit. Move pure helpers out (for example `MasteryPolicy.diagnostic_message`)
-  rather than raising it.
+  (`tests/check_architecture.py`). `auto_crafter/core/controller.lua`
+  and `BetterInventory_features.lua` sit near the limit. Move pure helpers out
+  (for example `MasteryPolicy.diagnostic_message`) rather than raising it.
 - **Test case manifest:** `tests/case_manifest.json` maps line ranges in each
   test to named cases. Inserting test lines needs
   `python tools/remap_manifest.py . <test.py> [...]`.
