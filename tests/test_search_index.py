@@ -292,6 +292,31 @@ def main() -> None:
     assert ok is True and unfavorited.favorite is False
     assert index.metrics.builds == 6
 
+    # P6: is_perfect derives from fields the fingerprint already covers (item
+    # type, base-stat values, baseItemLevel), so presenting an unchanged item
+    # again must not re-run it, while an edit to those fields still rebuilds
+    # the record and re-evaluates it.
+    original_is_perfect = dependencies["is_perfect"]
+    lua.execute("perfect_calls = 0")
+    dependencies["is_perfect"] = lua.eval(
+        "function(item) perfect_calls = perfect_calls + 1 return item.base_stats[4].value == 0.6 end"
+    )
+    probe_item = lua.globals().make_weapon("perfect-probe", False)
+    probe, ok = search_index.project(index, probe_item, context)
+    assert ok is True and probe.perfect is True
+    assert lua.globals().perfect_calls == 1
+    for _ in range(20):
+        again, ok = search_index.project(index, probe_item, context)
+        assert ok is True and again.perfect is True
+    assert lua.globals().perfect_calls == 1, "is_perfect re-ran for an unchanged item"
+    assert index.metrics.builds == 7
+    probe_item.base_stats[4].value = 0.8
+    edited, ok = search_index.project(index, probe_item, context)
+    assert ok is True and edited.perfect is False
+    assert lua.globals().perfect_calls == 2
+    assert index.metrics.builds == 8
+    dependencies["is_perfect"] = original_is_perfect
+
     # Enhanced Descriptions can expand blessing text enough to consume most of
     # the bounded projection. Essential perk names and compact aliases must be
     # indexed before optional long descriptions so bare weapon-perk searches

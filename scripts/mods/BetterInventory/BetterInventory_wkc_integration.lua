@@ -178,6 +178,30 @@ local function resolved_icon_material(wkc, configuration, content)
 	end
 end
 
+-- Material and scale are static per (item, WKC provider, configuration table); the
+-- configuration table changes with WKC's layout generation, which invalidates this.
+-- Without a generation the configuration could mutate in place, so nothing is cached.
+local material_cache = setmetatable({}, { __mode = "k" })
+
+local function cached_icon_material(wkc, configuration, content)
+	local item = content and item_from_content(content)
+
+	if not item or not wkc or wkc._layout_gen == nil then
+		return resolved_icon_material(wkc, configuration, content)
+	end
+
+	local entry = material_cache[item]
+
+	if not entry or entry.wkc ~= wkc or entry.configuration ~= configuration then
+		local material, scale = resolved_icon_material(wkc, configuration, content)
+
+		entry = { configuration = configuration, material = material, scale = scale, wkc = wkc }
+		material_cache[item] = entry
+	end
+
+	return entry.material, entry.scale
+end
+
 local function resolved_kills(mod, content, allow_zero_kills, wkc, configuration)
 	wkc = wkc or optional_wkc()
 
@@ -495,6 +519,7 @@ local function cap_brunt_listing_overlay_sizes(item_grid, mod)
 				cap_style(type(styles) == "table" and styles[style_id], style_id, widget.content)
 
 				if pass.better_inventory_wkc_brunt_size_cap ~= true then
+					local zero_key = "better_inventory_wkc_zero_" .. style_id
 					local original_change_function = pass.change_function
 					local original_visibility_function = pass.visibility_function
 
@@ -503,15 +528,21 @@ local function cap_brunt_listing_overlay_sizes(item_grid, mod)
 							original_change_function(content, style, ...)
 						end
 
-						local kills = store_zero_kills_enabled(mod) and resolved_kills(mod, content, true) or nil
+						-- The visibility function ran first this frame and already resolved
+						-- whether this card shows zero; only resolve again when it did not run.
+						local zero = content[zero_key]
 
-						if kills == 0 then
+						if zero == nil then
+							zero = store_zero_kills_enabled(mod) and resolved_kills(mod, content, true) == 0
+						end
+
+						if zero then
 							if style_id == TEXT_STYLE_ID then
 								content[TEXT_STYLE_ID] = "0"
 							elseif style_id == ICON_STYLE_ID then
 								local current_wkc = optional_wkc()
 								local current_configuration = card_configuration(current_wkc) or {}
-								local material = resolved_icon_material(current_wkc, current_configuration, content) or DEFAULT_ICON
+								local material = cached_icon_material(current_wkc, current_configuration, content) or DEFAULT_ICON
 
 								content[ICON_STYLE_ID] = material
 							end
@@ -523,10 +554,16 @@ local function cap_brunt_listing_overlay_sizes(item_grid, mod)
 						local originally_visible = type(original_visibility_function) ~= "function" or original_visibility_function(content, style, ...)
 
 						if originally_visible then
+							content[zero_key] = false
+
 							return true
 						end
 
-						if not store_zero_kills_enabled(mod) or resolved_kills(mod, content, true) ~= 0 then
+						local zero = store_zero_kills_enabled(mod) and resolved_kills(mod, content, true) == 0
+
+						content[zero_key] = zero
+
+						if not zero then
 							return false
 						end
 
@@ -600,8 +637,8 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 		end
 	end
 
-	-- Native logic pass runs once before both render passes. No per-frame cache,
-	-- extra update hook, or retained item reference is needed.
+	-- Native logic pass runs once before both render passes. Material and text are
+	-- cached per item/kills, so a steady frame only reads the kill count.
 	pass_template[#pass_template + 1] = {
 		pass_type = "logic",
 		style_id = REFRESH_STYLE_ID,
@@ -612,8 +649,20 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			local kills = resolved_kills(mod, content, zero_kills_allowed(mod, configuration), current_wkc, current_configuration)
 			content.better_inventory_wkc_text_visible = kills ~= nil
 			content.better_inventory_wkc_icon_visible = kills ~= nil and current_configuration.icon_on ~= false
-			content[TEXT_STYLE_ID] = kills and abbreviated_kills(current_wkc, kills) or ""
-			local material, scale = resolved_icon_material(current_wkc, current_configuration, content)
+			local text = ""
+
+			if kills then
+				if content.better_inventory_wkc_text_kills ~= kills or content.better_inventory_wkc_text_wkc ~= current_wkc then
+					content.better_inventory_wkc_text_kills = kills
+					content.better_inventory_wkc_text_wkc = current_wkc
+					content.better_inventory_wkc_text = abbreviated_kills(current_wkc, kills)
+				end
+
+				text = content.better_inventory_wkc_text
+			end
+
+			content[TEXT_STYLE_ID] = text
+			local material, scale = cached_icon_material(current_wkc, current_configuration, content)
 			content[ICON_STYLE_ID] = material or DEFAULT_ICON
 			content.better_inventory_wkc_icon_scale = scale or 1
 		end,

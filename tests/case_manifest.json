@@ -6,7 +6,7 @@
     {"name": "bounded_literal_parser_effective_rarity_and_fail_open_matching", "risk": "high", "start_line": 1, "end_line": 366}
   ],
   "test_search_index.py": [
-        {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 615}
+    {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 640}
   ],
   "test_search_end_to_end.py": [
     {"name": "production_name_perk_blessing_sort_and_release", "risk": "critical", "start_line": 1, "end_line": 250}
@@ -28,7 +28,7 @@
   ],
   "test_weapon_kill_counter_integration.py": [
     {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 549},
-    {"name": "single_pass_resolution_and_layout_generation_invalidation", "risk": "high", "start_line": 550, "end_line": 592}
+    {"name": "single_pass_resolution_and_layout_generation_invalidation", "risk": "high", "start_line": 550, "end_line": 684}
   ],
   "test_rarity_rating.py": [
     {"name": "two_profiles_split_tiers_mixed_melk_and_live_color_updates", "risk": "high", "start_line": 1, "end_line": 385}
@@ -60,11 +60,11 @@
     {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 1179, "end_line": 1227},
     {"name": "localized_display_labels", "risk": "high", "start_line": 1228, "end_line": 1242},
     {"name": "custom_stat_grid_bounds_and_summary", "risk": "critical", "start_line": 1243, "end_line": 1312},
-    {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 1313, "end_line": 1401},
-    {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 1402, "end_line": 1443},
-    {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 1444, "end_line": 1480},
-    {"name": "compact_estimates_deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 1481, "end_line": 1538},
-    {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1539, "end_line": 1567}
+    {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 1313, "end_line": 1417},
+    {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 1418, "end_line": 1459},
+    {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 1460, "end_line": 1507},
+    {"name": "compact_estimates_deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 1508, "end_line": 1565},
+    {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1566, "end_line": 1594}
   ],
   "test_auto_crafter_viewport.py": [
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 74},
@@ -133,8 +133,8 @@
     {"name": "custom_stat_exact_fallback_and_resume", "risk": "critical", "start_line": 2884, "end_line": 3065},
     {"name": "acquisition_mode_and_dump_comparison", "risk": "critical", "start_line": 3066, "end_line": 3143},
     {"name": "psych_ward_staged_queue_idle_reconciliation_budget", "risk": "high", "start_line": 3144, "end_line": 3187},
-    {"name": "imported_queue_retires_stale_native_trait_discovery", "risk": "critical", "start_line": 3188, "end_line": 3225},
-    {"name": "auto_crafter_lock_lifecycle_and_read_bounds", "risk": "critical", "start_line": 3253, "end_line": 3398}
+    {"name": "imported_queue_retires_stale_native_trait_discovery", "risk": "critical", "start_line": 3188, "end_line": 3333},
+    {"name": "auto_crafter_lock_lifecycle_and_read_bounds", "risk": "critical", "start_line": 3334, "end_line": 3479}
   ],
   "test_games_lantern_import.py": [
     {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 19, "end_line": 48},

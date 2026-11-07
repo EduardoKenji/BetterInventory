@@ -3250,6 +3250,87 @@ def main() -> None:
 			assert(controller:snapshot().catalog == imported_catalog)
 		end
 
+		-- P4: the idle selection poll compares Brunt's native selection with the
+		-- last native selection. A staged Games Lantern job (or an unmatched
+		-- selected offer) used to store a different key, so every 0.5 s poll
+		-- rebuilt the plan and stopped the active run. An imported run must never
+		-- be stopped or re-planned by Brunt's selection.
+		do
+			local builds = 0
+			local counting_planner = {build = function(...) builds = builds + 1 return Planner.build(...) end}
+			local function new_controller(backend)
+				local reporter = reports()
+				local controller = Controller.new({backend = backend or {}, planner = counting_planner, context = context(), settings = base_settings(), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+				controller._test_reporter = reporter
+				controller._snapshot = snapshot_with(nil)
+				controller._active_view = {}
+				controller._view_is_valid = true
+				return controller
+			end
+			local function staged_job()
+				return {
+					kind = "games_lantern_job",
+					offer = target_offer(),
+					dump_stat = "damage_stat",
+					dump_target = 60,
+					perks = {{id = "perk-1", rarity = 4}, {id = "perk-2", rarity = 4}},
+					blessings = {{id = "blessing-1", rarity = 4}, {id = "blessing-2", rarity = 4}},
+					catalog = {available = true, perks = {}, blessings = {}},
+				}
+			end
+
+			-- Staged job, Brunt shows another weapon: no repeated rebuilds.
+			CurrentOffer = {offerId = "offer-other", masterId = "weapon-other"}
+			local controller = new_controller()
+			assert(controller:set_imported_job(staged_job()) == true)
+			local staged_builds = builds
+			for _ = 1, 20 do controller:update(0.5) end
+			assert(builds == staged_builds, "staged job rebuilt " .. tostring(builds - staged_builds) .. " times")
+			-- Changing Brunt's selection while staged does not touch the job plan.
+			CurrentOffer = {offerId = "offer-third", masterId = "weapon-third"}
+			for _ = 1, 4 do controller:update(0.5) end
+			assert(builds == staged_builds)
+			assert(controller:snapshot().plan.target.master_id == "weapon-1")
+			for _, event in ipairs(controller._test_reporter.events) do assert(event.kind ~= "purchase_search_stopped") end
+
+			-- Clearing the job returns to native tracking: one rebuild per real change.
+			assert(controller:clear_imported_job() == true)
+			local cleared_builds = builds
+			for _ = 1, 10 do controller:update(0.5) end
+			assert(builds == cleared_builds, "native selection missing from the store rebuilt repeatedly")
+			CurrentOffer = raw_offer()
+			controller:update(0.5)
+			local changed_builds = builds
+			assert(changed_builds > cleared_builds, "real selection change did not re-plan")
+			for _ = 1, 10 do controller:update(0.5) end
+			assert(builds == changed_builds, "re-planned again without a selection change")
+			assert(controller:snapshot().plan.target.master_id == "weapon-1")
+
+			-- A run can only start while Brunt shows the job's weapon. While it stays
+			-- there the run keeps going with no repeated planning; moving Brunt to
+			-- another weapon stops the spending run (fail closed).
+			local backend = {}
+			local purchase = pending()
+			function backend:purchase_offer(_) return purchase end
+			CurrentOffer = raw_offer()
+			local running = new_controller(backend)
+			assert(running:set_imported_job(staged_job()) == true)
+			assert(running:start_purchase_search() == true)
+			assert(running._run_imported_job ~= nil and running:snapshot().search.running == true)
+			local run_builds = builds
+			for _ = 1, 20 do running:update(0.5) end
+			assert(running:snapshot().search.running == true, "unchanged selection stopped the imported run")
+			assert(builds == run_builds, "unchanged selection re-planned the imported run")
+			CurrentOffer = {offerId = "offer-third", masterId = "weapon-third"}
+			running:update(0.5)
+			assert(running:snapshot().search.running == false, "imported run survived a selection change")
+			local stopped = running._test_reporter.events[#running._test_reporter.events]
+			assert(stopped.kind == "purchase_search_stopped" and stopped.payload.reason == "selected_weapon_changed")
+			local run_stop_builds = builds
+			for _ = 1, 10 do running:update(0.5) end
+			assert(builds == run_stop_builds, "stopped imported run kept re-planning")
+		end
+
 		-- Account-lock lifecycle regressions (audit B1, B8, B9, B10). The shared
 		-- harness holds the account-operation token like the host arbiter does.
 		function lock_harness(settings_overrides)

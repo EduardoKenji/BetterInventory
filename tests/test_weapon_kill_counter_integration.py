@@ -585,6 +585,98 @@ def main() -> None:
         measured_template[1].value(nil, nil, nil, measured_content)
         assert(measured_template[2].visibility_function(measured_content))
     """)
+    lua.globals()["test_integration"] = integration
+    lua.globals()["test_mod"] = mod
+    # P2/P3: steady frames must not repeat material, formatting or zero-kill
+    # resolution work, and every cache must follow its inputs.
+    lua.execute("""
+        local content = measured_content
+        local material_reads, abbrev_reads, instance_reads, kill_reads = 0, 0, 0, 0
+        local material = "test/wkc/icon_a"
+        local original_kills = wkc_test_mod._overlay_kills_for_item
+        wkc_test_mod._overlay_icon_material = function() material_reads = material_reads + 1 return material, 0.5 end
+        wkc_test_mod._overlay_per_instance_for_item = function() instance_reads = instance_reads + 1 return true end
+        wkc_test_mod._abbrev_num = function(value) abbrev_reads = abbrev_reads + 1 return value == 1000 and "1k" or tostring(value) end
+        wkc_test_mod._overlay_kills_for_item = function(item) kill_reads = kill_reads + 1 return original_kills(item) end
+        wkc_test_mod._layout_gen = 10
+        wkc_test_mod._stats.weapons.combat_axe.kills = 2000
+        local function frame() measured_template[1].value(nil, nil, nil, content) end
+        for _ = 1, 120 do frame() end
+        assert(material_reads == 1 and instance_reads == 1, "material resolved " .. material_reads .. "/" .. instance_reads)
+        assert(abbrev_reads == 1, "kills formatted " .. abbrev_reads)
+        assert(kill_reads == 120)
+        assert(content.wkc_kills == "2000" and content.wkc_kills_icon == "test/wkc/icon_a" and content.better_inventory_wkc_icon_scale == 0.5)
+        -- Kills change: re-formatted once, then steady again.
+        wkc_test_mod._stats.weapons.combat_axe.kills = 77
+        for _ = 1, 20 do frame() end
+        assert(abbrev_reads == 2 and content.wkc_kills == "77")
+        -- Something else overwriting the text is repaired on the next frame.
+        content.wkc_kills = ""
+        frame()
+        assert(content.wkc_kills == "77" and abbrev_reads == 2)
+        -- A new WKC layout generation re-resolves the material.
+        material = "test/wkc/icon_b"
+        frame()
+        assert(material_reads == 1 and content.wkc_kills_icon == "test/wkc/icon_a")
+        wkc_test_mod._layout_gen = 11
+        frame()
+        assert(material_reads == 2 and content.wkc_kills_icon == "test/wkc/icon_b")
+        -- A different item re-resolves.
+        content.item = {template_name = "combat_axe"}
+        frame()
+        assert(material_reads == 3 and instance_reads == 3)
+        -- Without a generation nothing is cached (configuration may mutate in place).
+        wkc_test_mod._layout_gen = nil
+        local before = material_reads
+        frame() frame()
+        assert(material_reads == before + 2)
+        wkc_test_mod._layout_gen = 11
+        wkc_test_mod._overlay_kills_for_item = original_kills
+
+        -- Brunt listing wrappers: the visibility function resolves zero kills once
+        -- and the change function reuses that result instead of resolving again.
+        local function brunt_widget(template_name, natively_visible)
+            return {
+                passes = {
+                    {style_id = "wkc_kills", visibility_function = function() return natively_visible end, change_function = function() end},
+                    {style_id = "wkc_kills_icon", visibility_function = function() return natively_visible end, change_function = function() end},
+                },
+                content = {size = {292, 56}, better_inventory_is_weapon = true, wkc_kills = "", item = {template_name = template_name, item_type = "WEAPON"}},
+                style = {
+                    wkc_kills = {font_size = 20, size = {34, 30}, offset = {-210, 10, 12}},
+                    wkc_kills_icon = {size = {22, 22}, offset = {-248, 10, 12}},
+                },
+            }
+        end
+        local zero_widget, visible_widget = brunt_widget("unused_sword", false), brunt_widget("combat_axe", true)
+        visible_widget.content.wkc_kills = "77"
+        wkc_test_mod._stats.weapons.combat_axe.kills = 77
+        local grid = {_all_grid_widgets = {zero_widget, visible_widget}}
+        assert(test_integration.cap_brunt_listing_overlay_sizes(grid, test_mod) == 4)
+        kill_reads, material_reads = 0, 0
+        wkc_test_mod._overlay_kills_for_item = function(item) kill_reads = kill_reads + 1 return original_kills(item) end
+        local function brunt_frame(widget)
+            for _, pass in ipairs(widget.passes) do
+                local style = widget.style[pass.style_id]
+                if pass.visibility_function(widget.content, style) then pass.change_function(widget.content, style) end
+            end
+        end
+        for _ = 1, 60 do brunt_frame(zero_widget) end
+        assert(kill_reads == 120, "zero card resolved " .. kill_reads)
+        assert(material_reads == 1, "zero card material " .. material_reads)
+        assert(zero_widget.content.wkc_kills == "0" and zero_widget.content.wkc_kills_icon == "test/wkc/icon_b")
+        kill_reads = 0
+        for _ = 1, 60 do brunt_frame(visible_widget) end
+        assert(kill_reads == 0, "visible card resolved " .. kill_reads)
+        assert(visible_widget.content.wkc_kills == "77")
+        -- Output still follows the setting.
+        test_mod.settings.weapon_kill_counter_show_zero_kills_in_stores = false
+        zero_widget.content.wkc_kills = ""
+        for _, pass in ipairs(zero_widget.passes) do assert(not pass.visibility_function(zero_widget.content, zero_widget.style[pass.style_id])) end
+        test_mod.settings.weapon_kill_counter_show_zero_kills_in_stores = true
+        for _, pass in ipairs(zero_widget.passes) do assert(pass.visibility_function(zero_widget.content, zero_widget.style[pass.style_id])) end
+        wkc_test_mod._overlay_kills_for_item = original_kills
+    """)
     print("BetterInventory Weapon Kill Counter integration tests passed.")
 
 

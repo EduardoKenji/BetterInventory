@@ -64,6 +64,10 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Character Overview: renaming a Curio now clears the overview widget's fit state, so the new name is refit instead of drawing with the old name's fitting.
 - Character Overview: weapon and Curio widgets record the rendered item after every update, so a same-gear replacement object takes the cheap `==` fast path and a same-gear item revision refreshes once instead of re-running the full update and text wrapping every frame.
 - Layout: Melk limited-offer cards reserve the 5 px of footer their blessing block is lifted by, so it no longer rises into the name rows.
+- Performance: Auto Crafter no longer re-plans and re-reads settings every 0.5 s while a Games Lantern job is staged (or the selected Brunt offer is not in the store snapshot) and Brunt shows a different weapon. The selection poll now tracks only Brunt's native selection, and Brunt's selection no longer re-plans or stops a merely staged Games Lantern job. A running imported run still stops (`selected_weapon_changed`) if Brunt moves off the run's own offer.
+- Performance: the Auto Crafter perk/blessing target lists are built once per trait catalogue instead of every frame while the Traits section is open.
+- Performance: Weapon Kill Counter cards cache the icon material per item and the formatted kill text per count, and Brunt zero-kill cards resolve their kill count once per pass instead of twice.
+- Performance: search no longer evaluates the perfect-roll check for every item on every presentation just to validate its cache (it is derived from fields the cache already compares).
 
 ## 3.7.4 - Unreleased
 

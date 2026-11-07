@@ -656,6 +656,16 @@ function Controller.new(dependencies)
 		}
 	end
 
+	local function native_selected_key()
+		if type(self._get_selected_offer) ~= "function" then
+			return nil
+		end
+
+		local ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
+
+		return ok and offer_key(selected_offer_ids(raw_offer)) or nil
+	end
+
 	function self:_selected_offer_summary()
 		if not self._snapshot or type(self._get_selected_offer) ~= "function" then
 			return nil
@@ -768,7 +778,8 @@ function Controller.new(dependencies)
 		local previous_plan = self._plan
 		local config = planner_config()
 		config.target_offer = (self._run_imported_job or self._imported_job) and config.target_offer or self:_selected_offer_summary()
-		self._selected_native_key = offer_key(config.target_offer)
+		-- Native selection only: a staged job's key would differ from it and re-trigger this refresh every poll.
+		self._selected_native_key = native_selected_key()
 		self._planner_signature = planner_config_signature(config)
 		local ok, plan = pcall(self._planner.build, self._snapshot, config)
 
@@ -2967,16 +2978,20 @@ function Controller.new(dependencies)
 		end
 
 		if view_idle_poll_due and self._view_is_valid and self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
-			local selected_ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
-			local selected_key = selected_ok and offer_key(selected_offer_ids(raw_offer)) or nil
+			local selected_key = native_selected_key()
+			local run_job = run_is_active() and self._run_imported_job
 
-			if selected_key ~= self._selected_native_key then
-				self:_stop_active_run("selected_weapon_changed")
+			if run_job and selected_key ~= offer_key(run_job.offer) then
+				-- A spending run fails closed: moving Brunt off the run's own offer stops it.
 				self._selected_native_key = selected_key
-				self:_refresh_plan("target_changed")
-				if self._imported_job then
-					self._catalog = self._imported_job.catalog
-				else
+				self:_stop_active_run("selected_weapon_changed")
+			elseif selected_key ~= self._selected_native_key then
+				self._selected_native_key = selected_key
+
+				-- A merely staged job targets its own offer, so Brunt's selection must not re-plan it.
+				if not self._imported_job and not self._run_imported_job then
+					self:_stop_active_run("selected_weapon_changed")
+					self:_refresh_plan("target_changed")
 					self:_schedule_catalog("target_changed")
 				end
 			end
