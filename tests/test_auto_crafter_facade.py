@@ -27,7 +27,7 @@ def main() -> None:
     assert "function AutoCrafter.interrupt_for_external_mutation(kind)" in source
     assert "snapshot.operation_inflight or snapshot.operation_quarantined" in source
     assert "queue_owned = queue_state and queue_state.job_count > 0" in source
-    assert "local queue_state = games_lantern_queue and games_lantern_queue:state()" in source
+    assert "games_lantern_queue:is_settling()" in source
     assert "local controller_busy = controller and controller:is_busy() or false" in source
     assert "pcall(games_lantern_queue.clear, games_lantern_queue)" in source
     assert 'pcall(games_lantern_import.cancel, games_lantern_import, "shutdown")' in source
@@ -79,7 +79,7 @@ def main() -> None:
     # staged offer IDs again before acquiring mutation ownership.
     assert "native_store_ready = native_store_ready" in source
     assert 'native_store_reason = type(layout) ~= "table"' in source
-    assert 'games_lantern_import:state() == "waiting_for_store"' in source
+    assert "games_lantern_import:is_busy()" in source
     assert "Brunt's Armoury changed after this build was imported" in source
 
     # DMF log methods pass their first payload through string.format. Imported
@@ -110,6 +110,9 @@ def main() -> None:
         local function fake_queue(state)
             local queue = {state_value = state, stop_wanted = true, events = {}}
             function queue:state() return self.state_value end
+            function queue:is_settling() return self.state_value == "stopping" or self.state_value == "quarantined" end
+            function queue:is_pre_dispatch() return false end
+            function queue:is_busy() return self.state_value ~= "stopped" end
             function queue:stop_requested() return self.stop_wanted end
             function queue:on_event(kind)
                 self.events[#self.events + 1] = kind
@@ -169,6 +172,7 @@ def main() -> None:
         local fake_queue = {
             snapshot = function() return {job_count = 1, state = queue_state} end,
             state = function() return queue_state end,
+            is_busy = function() return false end,
             clear = function() calls[#calls + 1] = "queue_clear"; return true end,
         }
         local fake_import = {

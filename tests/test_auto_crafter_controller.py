@@ -265,7 +265,17 @@ def main() -> None:
             controller._active_view = {}
             controller._view_is_valid = true
 
-            assert(controller:start_mastery_operation(state.item) == true)
+            -- Fallback chain without a local projection: backend.project_mastery is absent.
+            local completed
+            controller._phase3 = {running = true}
+            controller._mastery = {
+                gear_id = state.item.gear_id,
+                mastery_id = "pattern-1",
+                on_complete = function(current) completed = current end,
+                phase3 = true,
+                running = true,
+            }
+            assert(controller:_mastery_after_refresh(controller._generation, controller._snapshot) == true)
             assert(backend.extract_calls == 1, "extract calls " .. tostring(backend.extract_calls))
             assert(backend.claim_calls == 1, "claim calls " .. tostring(backend.claim_calls) .. " phase " .. tostring(controller:snapshot().phase) .. " error " .. tostring(controller:snapshot().last_error))
             assert(backend.upgrade_calls == 1)
@@ -274,7 +284,8 @@ def main() -> None:
             assert(backend.claim_added_xp == 50)
             assert(controller:snapshot().mastery.expected_xp == 160)
             controller:update(1)
-            assert(controller:snapshot().phase == "mastery_complete")
+            assert(controller:snapshot().phase == "phase3_fodder_sync_complete")
+            assert(completed and completed.mastery_level == 6)
 			local level_events = 0
 			for _, event in ipairs(reporter.events) do
 				if event.kind == "mastery_level_increased" then
@@ -534,10 +545,13 @@ def main() -> None:
             controller._snapshot = snapshot_with(item)
             controller._active_view = {}
             controller._view_is_valid = true
-            assert(controller:start_mastery_operation(item) == true)
+            controller._phase3 = {running = false}
+            controller._mastery = {gear_id = item.gear_id, mastery_id = "pattern-1", phase3 = true, running = true}
+            assert(controller:_mastery_after_refresh(controller._generation, controller._snapshot) == true)
             assert(backend.extract_calls == 0)
             assert(backend.upgrade_calls == 0)
             assert(controller:snapshot().phase == "mastery_already_complete")
+            assert(controller._mastery == nil)
         end
 
         -- Selected Brunt target is frozen. A changed native selection stops before purchase POST.

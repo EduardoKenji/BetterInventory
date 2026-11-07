@@ -92,7 +92,15 @@ def main() -> None:
             "catalog_for_offer": catalog_callback,
         }
     )
-    resolved, reason = resolver.resolve(model, context)
+    def resolve_build(build_model, build_context):
+        # Mirrors the host flow (identities, per-offer catalogue read, attach); Resolver.resolve was test-only.
+        identity, identity_reason = resolver.resolve_identities(build_model, build_context)[:2]
+        if identity is None:
+            return None, identity_reason
+        catalogs = {str(identity["jobs"][i]["master_id"]): build_context["catalog_for_offer"](identity["jobs"][i]["offer"]) for i in (1, 2)}
+        return resolver.attach_catalogs(identity, to_lua(catalogs), build_context)[:2]
+
+    resolved, reason = resolve_build(model, context)
     assert resolved is not None, reason
     assert resolved["resolver_contract_version"] == "games_lantern_resolver_v1"
     assert resolved["jobs"][1]["slot"] == "melee"
@@ -618,12 +626,12 @@ def main() -> None:
             "weapons": model["weapons"],
         }
     )
-    result, reason = resolver.resolve(wrong_class, context)
+    result, reason = resolve_build(wrong_class, context)
     assert result is None
     assert reason == "archetype_mismatch"
 
     missing_class = to_lua({"weapons": model["weapons"]})
-    result, reason = resolver.resolve(missing_class, context)
+    result, reason = resolve_build(missing_class, context)
     assert result is None
     assert reason == "archetype_unavailable"
 
@@ -635,7 +643,7 @@ def main() -> None:
             "catalog_for_offer": catalog_callback,
         }
     )
-    result, reason = resolver.resolve(model, duplicate_offer)
+    result, reason = resolve_build(model, duplicate_offer)
     assert result is None
     assert reason in {"ambiguous_melee", "multiple_melee_weapons"}
 
@@ -653,11 +661,12 @@ def main() -> None:
                                 ],
                             "perks": model["weapons"][1]["perks"],
                             "blessings": model["weapons"][1]["blessings"],
-                        }
+                        },
+                    model["weapons"][2],
                 ],
         }
     )
-    result, reason = resolver.resolve(tied_model, context)
+    result, reason = resolve_build(tied_model, context)
     assert result is None
     assert reason in {"dump_stat_tie", "melee_weapon_unavailable"}
 

@@ -290,6 +290,13 @@ def main() -> None:
     assert native_resolver_calls == []
     assert native_waiter.update(native_waiter) == "waiting_for_store"
     assert native_reports.count("import_waiting_for_store") == 1
+    assert native_waiter.is_busy(native_waiter) is True
+    assert native_waiter.presentation_snapshot(native_waiter)["busy"] is True
+    # Awaiting the player's weapon choice is not async work: not busy, but the panel still blocks crafting.
+    for state, busy in {"idle": False, "fetching": True, "resolving_catalogues": True, "awaiting_weapon_choice": False, "staged": False}.items():
+        native_waiter._state = state
+        assert native_waiter.is_busy(native_waiter) is busy, state
+    native_waiter._state = "waiting_for_store"
 
     native_ready[0] = True
     assert native_waiter.update(native_waiter, 0.25) == "resolving_catalogues"
