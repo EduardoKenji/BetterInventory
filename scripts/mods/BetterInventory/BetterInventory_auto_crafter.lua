@@ -534,12 +534,7 @@ local function reporter(ui_panel)
 				if string.sub(reason, 1, #"phase3_") == "phase3_" then
 					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), search_stop_message(reason))
 				end
-			elseif kind == "mastery_operation_started" then
-				if ui_panel then
-					ui_panel:set_phase("mastery_preflight")
-				end
-
-			elseif kind == "mastery_upgrade_complete" or kind == "mastery_sacrifice_complete" or kind == "mastery_sync_started" or kind == "mastery_poll_result" or kind == "mastery_operation_complete" or kind == "mastery_sync_timeout" then
+			elseif kind == "mastery_upgrade_complete" or kind == "mastery_sacrifice_complete" or kind == "mastery_sync_started" or kind == "mastery_poll_result" or kind == "mastery_sync_timeout" then
 				if ui_panel then
 					ui_panel:set_phase(kind)
 				end

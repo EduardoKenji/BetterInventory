@@ -361,10 +361,6 @@ function Controller.new(dependencies)
 		return enabled() and setting("auto_crafter_read_only_probe", true) == true
 	end
 
-	local function mutations_enabled()
-		return enabled()
-	end
-
 	local planner_setting_ids = {
 		auto_crafter_target_dump_stat = true,
 		auto_crafter_dump_stat_target = true,
@@ -607,16 +603,6 @@ function Controller.new(dependencies)
 
 		return raw_setting(setting_id) ~= frozen[setting_id]
 	end
-
-	local mutation_setting_ids = {
-		auto_crafter_defer_bad_weapon_processing = true,
-		auto_crafter_level_mastery_20 = true,
-		auto_crafter_consecrate_transcendent = true,
-		auto_crafter_upgrade_expertise_500 = true,
-		auto_crafter_allocate_mastery_points = true,
-		auto_crafter_change_perks = true,
-		auto_crafter_change_blessings = true,
-	}
 
 	local function planner_config()
 		local imported_job = self._run_imported_job or self._imported_job
@@ -861,7 +847,7 @@ function Controller.new(dependencies)
 	local function operation_context_valid(generation)
 		local character_id = current_character_id()
 
-		return generation == self._generation and runtime_context_valid() and mutations_enabled() and account_operation_is_current() and (self._run_character_id == nil or character_id == self._run_character_id)
+		return generation == self._generation and runtime_context_valid() and enabled() and account_operation_is_current() and (self._run_character_id == nil or character_id == self._run_character_id)
 	end
 
 	local function operation_report(kind, payload)
@@ -1896,39 +1882,8 @@ function Controller.new(dependencies)
 		return (tonumber(candidate.damage) or 0) > (tonumber(current.damage) or 0)
 	end
 
-	function self:_phase3_stop(reason, current)
-		local phase3 = self._phase3
-		local search = self._search
-
-		if phase3 then
-			phase3.running = false
-			phase3.current = current or phase3.current
-			phase3.stop_reason = reason or "phase3_stopped"
-		end
-
-		if self._mastery and self._mastery.phase3 then
-			self._mastery.running = false
-		end
-
-		if search then
-			search.running = false
-
-			if phase3 and phase3.target_candidate then
-				search.result = phase3.target_candidate
-			end
-		end
-
-		self._phase = reason or "phase3_stopped"
-		operation_report("phase3_stopped", {
-			candidate = phase3 and phase3.target_candidate,
-			current = current,
-			reason = reason or "phase3_stopped",
-			search = search,
-		})
-	end
-
 	function self:start_purchase_search()
-		if not mutations_enabled() then
+		if not enabled() then
 			operation_report("mutation_blocked", {
 				reason = "account mutations are disabled",
 			})
@@ -2155,7 +2110,7 @@ function Controller.new(dependencies)
 				gear_id = mastery.gear_id,
 			})
 
-			local phase3 = mastery.phase3 and self._phase3 or nil
+			local phase3 = self._phase3
 			local project_mastery = backend and backend.project_mastery
 
 			if phase3 and type(project_mastery) == "function" then
@@ -2230,22 +2185,14 @@ function Controller.new(dependencies)
 			})
 		end
 
-		if mastery.phase3 then
-			self._phase = "phase3_fodder_sync_complete"
-			operation_report("phase3_fodder_mastery_complete", {
-				current = current,
-				gear_id = mastery.gear_id,
-			})
+		self._phase = "phase3_fodder_sync_complete"
+		operation_report("phase3_fodder_mastery_complete", {
+			current = current,
+			gear_id = mastery.gear_id,
+		})
 
-			if type(mastery.on_complete) == "function" then
-				mastery.on_complete(current)
-			end
-		else
-			self._phase = "mastery_complete"
-			operation_report("mastery_operation_complete", {
-				current = current,
-				gear_id = mastery.gear_id,
-			})
+		if type(mastery.on_complete) == "function" then
+			mastery.on_complete(current)
 		end
 
 		return true
@@ -2306,22 +2253,14 @@ function Controller.new(dependencies)
 				mastery.current = before
 				self._phase = "mastery_already_complete"
 
-				if mastery.phase3 then
-					local phase3 = self._phase3
+				local phase3 = self._phase3
 
-					self._mastery = nil
+				self._mastery = nil
 
-					if phase3 and phase3.target_candidate then
-						self:_phase3_finish(before)
-					elseif phase3 and phase3.running then
-						self:_purchase_search_step(generation)
-					end
-				else
-					operation_report("mastery_operation_complete", {
-						current = before,
-						gear_id = mastery.gear_id,
-						skipped = "mastery_already_20",
-					})
+				if phase3 and phase3.target_candidate then
+					self:_phase3_finish(before)
+				elseif phase3 and phase3.running then
+					self:_purchase_search_step(generation)
 				end
 
 				return
@@ -2330,7 +2269,7 @@ function Controller.new(dependencies)
 			self:_mastery_after_refresh(generation, snapshot)
 		end
 
-		local phase3 = mastery.phase3 and self._phase3 or nil
+		local phase3 = self._phase3
 
 		if phase3 and phase3.current_data then
 			accept_baseline(phase3.current_data)
@@ -2388,7 +2327,7 @@ function Controller.new(dependencies)
 				gear_id = mastery.gear_id,
 			})
 
-			if mastery.phase3 and type(backend.project_mastery) == "function" then
+			if type(backend.project_mastery) == "function" then
 				-- Final reconciliation verifies confirmed mutation results.
 				item.rarity = REDEEMED_RARITY
 				self:_mastery_extract(generation)
@@ -2410,72 +2349,6 @@ function Controller.new(dependencies)
 				mastery.before_data = nil
 				self:_mastery_after_refresh(generation, updated_snapshot)
 			end)
-		end)
-	end
-
-	function self:start_mastery_operation(candidate)
-		if not mutations_enabled() then
-			operation_report("mutation_blocked", {
-				reason = "account mutations are disabled",
-			})
-
-			return false
-		end
-
-		if self._operation_inflight or self._search and self._search.running or self._mastery and self._mastery.running then
-			return false
-		end
-
-		candidate = candidate or self._search and self._search.result or self._last_purchased
-
-		if not candidate or not candidate.gear_id or not candidate.mastery_id then
-			operation_report("mutation_blocked", {
-				reason = "no explicit purchased weapon is available for Phase 2",
-			})
-
-			return false
-		end
-
-		local item = find_item(self._snapshot and self._snapshot.gear and self._snapshot.gear.items, candidate.gear_id)
-
-		if not item then
-			operation_report("mutation_blocked", {
-				reason = "selected Phase 2 weapon is not present in authoritative gear",
-			})
-
-			return false
-		end
-
-		local acquired, ownership_error = acquire_account_operation()
-		if not acquired then
-			operation_report("mutation_blocked", {
-				reason = ownership_error or "another account operation is active",
-			})
-
-			return false
-		end
-
-		self._generation = self._generation + 1
-		self._run_elapsed = 0
-		self._run_started_at = clock_now()
-		self._operation_timings = {}
-		self._last_progress_elapsed = 0
-		self._failure_at = nil
-		self._mastery = {
-			candidate = candidate,
-			claim_retries = 0,
-			gear_id = candidate.gear_id,
-			mastery_id = candidate.mastery_id,
-			running = true,
-		}
-		self._last_error = nil
-		self._phase = "mastery_preflight"
-		operation_report("mastery_operation_started", {
-			candidate = candidate,
-		})
-
-		return self:_refresh_after_operation(self._generation, function (snapshot)
-			self:_mastery_after_refresh(self._generation, snapshot)
 		end)
 	end
 
@@ -2773,26 +2646,6 @@ function Controller.new(dependencies)
 
 				return true
 			end
-		end
-
-		if mutation_setting_ids[setting_id] and not mutations_enabled() then
-			invalidate_generation()
-
-			if self._search then
-				self._search.running = false
-			end
-			if self._phase3 then
-				self._phase3.running = false
-			end
-			if self._mastery then
-				self._mastery.running = false
-			end
-			if self._phase4 then
-				self._phase4.running = false
-			end
-
-			self._phase = "mutations_disabled"
-			return true
 		end
 
 		if setting_id == "auto_crafter_level_mastery_20" and self._phase3 and self._phase3.running and setting("auto_crafter_level_mastery_20", true) ~= true then
