@@ -2656,6 +2656,7 @@ def main() -> None:
     settings.enable_experimental_quick_discard = False
     mod.on_setting_changed("enable_experimental_quick_discard")
 
+    settings.automatic_curio_target_mode = "classes"
     settings.enable_automatic_curio_acquisition = True
     mod.on_setting_changed("enable_automatic_curio_acquisition")
     assert entries_by_id["automatic_curio_scan_operative_selection"].disabled is False
@@ -2811,6 +2812,38 @@ def main() -> None:
     assert entries_by_id["blessing_text_item_level_separation"].disabled is True
     assert entries_by_id["blessing_icon_size"].disabled is False
     assert entries_by_id["blessing_icon_spacing"].disabled is False
+
+    # Unset values (first load) grey options by the data.lua defaults: perks and
+    # ranked-text blessings on, dump-stat-only style on.
+    unset_ids = (
+        "show_weapon_perks",
+        "weapon_blessing_display_mode",
+        "character_overview_show_only_dump_stat",
+        "show_weapon_perk_rank_symbols",
+        "curio_display_profile",
+        "automatic_curio_target_mode",
+    )
+    saved_unset = {key: settings[key] for key in unset_ids}
+    for key in unset_ids:
+        settings[key] = None
+        mod.on_setting_changed(key)
+    assert entries_by_id["weapon_perk_text_opacity"].disabled is False
+    assert entries_by_id["weapon_blessing_text_opacity"].disabled is False
+    assert entries_by_id["character_overview_dump_stat_color_r"].disabled is False
+    assert entries_by_id["curio_secondary_stat_font_size"].disabled is False
+    saved_automatic_curio = settings.enable_automatic_curio_acquisition
+    settings.enable_automatic_curio_acquisition = True
+    mod.on_setting_changed("enable_automatic_curio_acquisition")
+    assert entries_by_id["automatic_curio_characters_group"].disabled is False
+    assert entries_by_id["automatic_curio_classes_group"].disabled is True
+    settings.weapon_blessing_display_mode = "text"
+    mod.on_setting_changed("weapon_blessing_display_mode")
+    assert entries_by_id["weapon_perk_rank_icon_size"].disabled is False
+    settings.enable_automatic_curio_acquisition = saved_automatic_curio
+    mod.on_setting_changed("enable_automatic_curio_acquisition")
+    for key in unset_ids:
+        settings[key] = saved_unset[key]
+        mod.on_setting_changed(key)
 
     settings.expand_armoury_requisition_window = False
     mod.on_setting_changed("expand_armoury_requisition_window")

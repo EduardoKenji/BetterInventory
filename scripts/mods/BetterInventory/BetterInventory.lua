@@ -195,7 +195,7 @@ local auto_crafter_hud_bridge = {
 	enabled = function()
 		local mod_enabled = type(mod.is_enabled) ~= "function" or mod:is_enabled()
 
-		return mod_enabled and mod:get("auto_crafter_enable") == true and mod:get("auto_crafter_show_status_hud") ~= false
+		return mod_enabled and mod:get("auto_crafter_enable") ~= false and mod:get("auto_crafter_show_status_hud") ~= false
 	end,
 	lines = function()
 		return mod:auto_crafter_hud_lines()
