@@ -3070,11 +3070,13 @@ def main() -> None:
     )
     for _ in range(10):
         features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    # Only the cheap preview flag is read per frame; recommendation and setting
+    # polls stay throttled.
     assert (
         globals_.lantern_enabled_calls,
         globals_.lantern_get_calls,
         globals_.lantern_preview_calls,
-    ) == lantern_poll_counts
+    ) == lantern_poll_counts[:2] + (lantern_poll_counts[2] + 10,)
     assert prototype_panel.layout[1].control_id == "better_inventory_lantern_section"
     lantern_entry = prototype_panel.layout[1]
     lantern_proxy = prototype_panel.widgets["better_inventory_lantern_section"]
@@ -3111,6 +3113,16 @@ def main() -> None:
     assert prototype_view._better_inventory_lantern_panel_hosted is False
     assert prototype_panel.widgets["better_inventory_lantern_section"] is None
     prototype_view._discard_items_element = None
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is True
+
+    # A preview change is noticed on the next frame, not at the next periodic probe.
+    hosted_preview = prototype_view.is_previewing_item
+    prototype_view.is_previewing_item = lua.eval("function() return false end")
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is False
+    prototype_view.is_previewing_item = hosted_preview
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert prototype_view._better_inventory_lantern_panel_hosted is True
@@ -4063,6 +4075,12 @@ def main() -> None:
         external_global_store_sort,
     )
     features.unregister_armoury_view(global_store_sort_view)
+
+    # Legacy quick-discard labels must end in the ASCII "  >" arrow, not
+    # re-encoded mojibake (the legacy fallback path is not executable here).
+    features_source = FEATURES_PATH.read_text(encoding="utf-8")
+    assert features_source.isascii()
+    assert features_source.count('"  >"') >= 6
 
 
 if __name__ == "__main__":

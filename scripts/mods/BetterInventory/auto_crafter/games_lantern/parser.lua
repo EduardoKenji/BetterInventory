@@ -30,12 +30,18 @@ local function unescape_html(value)
 		:gsub("&#0?39;", "'")
 		:gsub("&#x27;", "'")
 		:gsub("&quot;", '"')
-		:gsub("&amp;", "&")
 		:gsub("&lt;", "<")
-		:gsub("&gt;", ">"))
+		:gsub("&gt;", ">")
+		:gsub("&amp;", "&"))
 end
 
 local function bounded_label(value, max_bytes)
+	-- An entity decodes to at least 1 byte per 6, so longer input can never fit; reject
+	-- it before the quadratic trim runs over hostile interior whitespace.
+	if type(value) == "string" and #value > max_bytes * 6 then
+		return nil
+	end
+
 	value = unescape_html(value)
 
 	if not value or #value == 0 or #value > max_bytes then

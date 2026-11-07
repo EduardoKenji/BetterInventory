@@ -368,7 +368,9 @@ Query.compile = function(source, options)
 		return invalid(source, "query_too_long")
 	end
 
-	local raw_clauses, split_error = split_clauses(source, maximum_clauses)
+	-- zh-CN IME full-width "&", ":" and U+3000 act as their ASCII separators.
+	local text = string.gsub(string.gsub(string.gsub(source, "\239\188\134", "&"), "\239\188\154", ":"), "\227\128\128", " ")
+	local raw_clauses, split_error = split_clauses(text, maximum_clauses)
 
 	if not raw_clauses then
 		return invalid(source, split_error)

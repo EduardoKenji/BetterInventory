@@ -983,12 +983,12 @@ function Panel.new(dependencies)
 		return queue.job_count == 1 and "> CONFIRM ONE-WEAPON CRAFT <" or "> CONFIRM TWO-WEAPON CRAFT <"
 	end
 
-	function self:_request_games_lantern_paste(queue_owned)
+	function self:_request_games_lantern_paste()
 		if type(self._games_lantern_paste) ~= "function" then
 			return false, "paste_unavailable"
 		end
 
-		local ok, pasted, reason = pcall(self._games_lantern_paste, queue_owned == true)
+		local ok, pasted, reason = pcall(self._games_lantern_paste)
 
 		if not ok then
 			log("error", "Games Lantern paste failed: " .. tostring(pasted))
@@ -1732,7 +1732,7 @@ function Panel.new(dependencies)
 				selectable = true,
 				variant = "action",
 				action = function()
-					self:_request_games_lantern_paste(queue_owned)
+					self:_request_games_lantern_paste()
 				end,
 			}))
 			if queue_owned and type(self._games_lantern_clear) == "function" then
@@ -2378,7 +2378,7 @@ function Panel.new(dependencies)
 				local current_active = current_owned and (current_queue.state == "starting" or current_queue.state == "selecting" or current_queue.state == "preflighting" or current_queue.state == "dispatching" or current_queue.state == "running" or current_queue.state == "waiting_next" or current_queue.state == "stopping" or current_queue.state == "quarantined" or current_queue.state == "reconciliation_required")
 
 				if not current_active then
-					local pasted, paste_error = self:_request_games_lantern_paste(current_owned)
+					local pasted, paste_error = self:_request_games_lantern_paste()
 
 					if pasted ~= true then
 						log("info", "Games Lantern Ctrl+V import was not started: " .. tostring(paste_error))

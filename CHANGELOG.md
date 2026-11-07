@@ -49,6 +49,16 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Settings: code fallbacks used before a value is saved (first load) now match the data.lua defaults for the new-item highlight colour (green, not equipped-item gold), weapon perk/blessing text opacity (80%), rarity rating modes and card-background colour, Character Overview vertical rating, native Curio overlay and Curio name mode (two lines), perk/blessing/dump-stat display, the Games Lantern inventory section, the Curio buyer target mode (characters) and perfect-roll sort priority.
 - Settings: Mod Options greying for perk rank symbols, Curio display profile, Auto Crafter mastery/perk/blessing rows, the pulsing-dashes animation flag and the Auto Crafter status HUD now use the same unset defaults as the code they control.
 - Tests: a drift guard compares literal-ID `mod:get("id")` fallbacks in runtime Lua with data.lua defaults (dynamic IDs are not covered); the documented fail-closed Curio buyer scan gates are allowlisted.
+- Search: the full-width `＆`, `：` and ideographic space (U+3000) typed by zh-CN IMEs now act as `&`, `:` and a space in search queries.
+- Search: the search integration now shares the Features discard-policy instance, so clearing runtime caches also clears its perfect-roll cache (it previously loaded a separate copy).
+- Games Lantern import: HTML label parsing rejects captures longer than six times the field limit before trimming, so hostile pages with huge interior whitespace runs can no longer freeze the game thread (the trim was quadratic); `&amp;lt;` now decodes to the literal `&lt;` instead of `<`.
+- Games Lantern import: transport cleanup no longer kills a PID once the done file exists (the PID may have been reused), and an empty or digit-less done file is treated as not finished.
+- Games Lantern queue: the native-selection timeout is now 4 seconds of frame time instead of 240 frames (1 second at 240 fps).
+- Auto Crafter: Ctrl+V after a completed Games Lantern queue now replaces it (it was silently refused with `replacement_confirmation_required`); the Paste button and Ctrl+V are the explicit replacement action, and the Auto Crafter's import admission check now runs before the existing queue is cleared, so a rejected import no longer loses it.
+- Startup: if a hot-reloaded module fails to load, equipment persistence, search definitions and grid reuse now fall back to pass-through behaviour instead of a nil-returning stub (which dropped loadout saves and crashed grid creation).
+- Inventory: the Games Lantern recommendation panel reacts to a weapon-preview change on the next frame instead of at the next periodic probe.
+- Options panel: the legacy quick-discard mode and rarity labels end in a plain `  >` instead of mojibake.
+- Errors thrown by native or other mods' grid presenters are rethrown unchanged (level 0), so crash logs no longer blame BetterInventory.
 
 ## 3.7.4 - Unreleased
 

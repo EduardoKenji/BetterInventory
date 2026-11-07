@@ -1,7 +1,6 @@
 local SearchQuery = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_query")
 local SearchIndex = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_index")
 local SearchRuntime = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_runtime")
-local DiscardPolicy = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_discard_policy")
 local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
 local ProfileUtils = require("scripts/utilities/profile_utils")
@@ -548,6 +547,8 @@ end
 
 Integration.install = function(facade, mod, providers, configure_sort, global_store_service)
 	providers = type(providers) == "table" and providers or {}
+	-- Share the facade's instance so Features.clear_runtime_caches reaches its caches.
+	local DiscardPolicy = facade._discard_policy
 	local integration = Integration.new(mod, {
 		CompactCurioPerkSearchTerms = providers.CompactCurioPerkSearchTerms,
 		CompactWeaponPerkSearchTerms = providers.CompactWeaponPerkSearchTerms,

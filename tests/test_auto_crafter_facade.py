@@ -155,6 +155,83 @@ def main() -> None:
         facade,
     )
 
+    # Games Lantern paste over an existing queue: the Paste button and Ctrl+V
+    # are the explicit replacement action (a completed queue is replaceable
+    # too), and an import the Auto Crafter would reject must be refused before
+    # the existing queue is cleared.
+    paste_lua = LuaRuntime(unpack_returned_tuples=True)
+    paste_facade = paste_lua.execute(source, name=str(FACADE_PATH))
+    paste_lua.execute(
+        r'''
+        local facade = ...
+        local ok_fn = function() return true end
+        local calls, queue_state, controller_busy = {}, "complete", false
+        local fake_queue = {
+            snapshot = function() return {job_count = 1, state = queue_state} end,
+            state = function() return queue_state end,
+            clear = function() calls[#calls + 1] = "queue_clear"; return true end,
+        }
+        local fake_import = {
+            clipboard_matches_current = function() return false end,
+            clear = function() calls[#calls + 1] = "import_clear" end,
+            paste = function() calls[#calls + 1] = "import_paste"; return true end,
+            state = function() return "idle" end,
+        }
+        local fake_controller = {
+            snapshot = function() return {operation_inflight = controller_busy} end,
+            clear_imported_job = function() calls[#calls + 1] = "controller_clear" end,
+        }
+        local panel_dependencies
+        local modules = {
+            ["auto_crafter/core/controller"] = {configure = ok_fn, new = function() return fake_controller end},
+            ["auto_crafter/core/hud_policy"] = {presentation_needs_update = ok_fn},
+            ["auto_crafter/core/planner"] = {build = ok_fn},
+            ["auto_crafter/darktide/backend"] = {new = function() return {} end},
+            ["auto_crafter/darktide/context"] = {new = function() return {} end},
+            ["auto_crafter/games_lantern/queue"] = {new = function() return fake_queue end},
+            ["auto_crafter/games_lantern/clipboard"] = {extract_url = ok_fn},
+            ["auto_crafter/games_lantern/clipboard_host"] = {read = ok_fn},
+            ["auto_crafter/games_lantern/parser"] = {parse = ok_fn},
+            ["auto_crafter/games_lantern/resolver"] = {resolve_identities = ok_fn, attach_catalogs = ok_fn},
+            ["auto_crafter/games_lantern/transport"] = {new = function() return {} end},
+            ["auto_crafter/games_lantern/transport_win"] = {spawn = ok_fn},
+            ["auto_crafter/games_lantern/transport_wine"] = {spawn = ok_fn},
+            ["auto_crafter/games_lantern/import_controller"] = {new = function() return fake_import end},
+            ["auto_crafter/darktide/panel"] = {
+                configure = ok_fn,
+                new = function(dependencies) panel_dependencies = dependencies; return {} end,
+            },
+            ["auto_crafter/darktide/viewport_layout"] = {panel_pivot = ok_fn},
+        }
+        local mod = {
+            io_dofile = function(_, path)
+                for name, module in pairs(modules) do
+                    if string.sub(path, -#name) == name then return module end
+                end
+                return false
+            end,
+            get = function() end,
+            info = function() end,
+            error = function() end,
+            localize = function(_, id) return id end,
+        }
+        assert(facade.configure({mod = mod}) == true, "stubbed Auto Crafter must configure")
+        assert(panel_dependencies, "panel must be constructed")
+        local paste = panel_dependencies.games_lantern_paste
+
+        -- Completed queue + Ctrl+V: replaced, not silently refused.
+        assert(paste() == true)
+        assert(table.concat(calls, ",") == "queue_clear,controller_clear,import_clear,import_paste", table.concat(calls, ","))
+
+        -- Rejected import: the existing queue survives untouched.
+        calls, controller_busy = {}, true
+        local pasted, reason = paste()
+        assert(pasted == false and reason == "auto_crafter_busy", tostring(reason))
+        assert(#calls == 0, "a rejected import must not clear the queue")
+        ''',
+        paste_facade,
+    )
+
     print("Auto Crafter facade crash-containment checks passed.")
 
 

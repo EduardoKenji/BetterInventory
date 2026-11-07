@@ -346,6 +346,9 @@ def main() -> None:
 			on_exit = function() end,
 			_setup_item_grid_materials = function() end,
 		}
+		test_modify_view = {
+			present_grid_layout = function() end,
+		}
 		test_view_element_grid = {
 			_create_entry_widget_from_config = function() end,
 			update = function() end,
@@ -372,6 +375,7 @@ def main() -> None:
 		captured_module_errors = 0
 		settings_registry_register_calls = 0
 		fail_feature_load = false
+		failing_modules = {}
 
         function test_mod:get(setting_id)
             return settings[setting_id]
@@ -390,6 +394,12 @@ def main() -> None:
         end
 
 		function test_mod:io_dofile(path)
+			for _, failing in ipairs(failing_modules) do
+				if string.find(path, failing, 1, true) then
+					return false
+				end
+			end
+
 			if string.find(path, "BetterInventory_layout", 1, true) and fail_layout_load then
 				return false
 			end
@@ -457,6 +467,8 @@ def main() -> None:
 				captured_grid_widget_hook = callback
 			elseif target == test_view_element_grid and method == "present_grid_layout" then
 				captured_grid_present_hook = callback
+			elseif target == test_modify_view and method == "present_grid_layout" then
+				captured_modify_present_hook = callback
 			end
         end
 
@@ -504,6 +516,8 @@ def main() -> None:
 				return test_inventory_weapons_view
 			elseif path == "scripts/ui/view_elements/view_element_grid/view_element_grid" then
 				return test_view_element_grid
+			elseif path == "scripts/ui/views/crafting_mechanicus_modify_view/crafting_mechanicus_modify_view" then
+				return test_modify_view
 			end
 
             return {}
@@ -1213,6 +1227,21 @@ def main() -> None:
         """
     )
     assert globals_.reusable_blueprints_identity_preserved is True
+
+    # Errors from native or other mods' presenters must pass through the hook
+    # unchanged; level-1 error() prefixed BetterInventory's location and made
+    # crash logs blame this mod.
+    lua.execute(
+        """
+        local function failing_present() error("native present failure") end
+        local _, native_message = pcall(failing_present)
+        local _, hook_message = pcall(
+            captured_modify_present_hook, failing_present, {__class_name = "CraftingMechanicusModifyView"}, {}
+        )
+        present_error_passthrough = hook_message == native_message
+        """
+    )
+    assert globals_.present_error_passthrough is True
 
     melk_view._optional_store_service = "get_all_characters_marks_store_custom"
     global_melk_configuration = character_overview_ui.melk_grid_configuration(
@@ -4130,6 +4159,45 @@ def main() -> None:
     assert globals_.captured_module_errors == 2
     globals_.test_mod.update(0.016)
     assert globals_.captured_module_errors == 2
+
+    # Modules on the native call path must degrade to a pass-through, not to a
+    # nil-returning stub that drops loadout saves or crashes grid creation.
+    globals_.fail_layout_load = False
+    lua.execute(
+        """
+        failing_modules = {
+            "BetterInventory_equipment_persistence",
+            "BetterInventory_search_ui",
+            "BetterInventory_runtime_lifecycle",
+        }
+        """
+    )
+    lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
+    lua.execute(
+        """
+        local dependencies = runtime_dependencies
+        local saved_view
+        local saved = dependencies.EquipmentPersistence.persist_local_changes(
+            test_mod, function(view, arg) saved_view = view; return "saved:" .. arg end, "view", "arg"
+        )
+        local definitions = {}
+        local grid_args = {}
+        local results = dependencies.RuntimeLifecycle.present_reused_grid(
+            function(grid, layout, blueprints, a, b) grid_args = {grid, layout, blueprints, a, b}; return "native", nil end,
+            "grid", "layout", "blueprints", {n = 2, "a", "b"}
+        )
+        fallback_results = {
+            saved = saved, saved_view = saved_view,
+            decorated = dependencies.SearchUI.decorate_definitions(definitions, {}, test_mod) == definitions,
+            reused = results[1], reused_count = results.n, reused_args = table.concat(grid_args, ","),
+        }
+        """
+    )
+    fallback = globals_.fallback_results
+    assert fallback.saved == "saved:arg" and fallback.saved_view == "view"
+    assert fallback.decorated is True
+    assert fallback.reused == "native" and fallback.reused_count == 2
+    assert fallback.reused_args == "grid,layout,blueprints,a,b"
 
     print("BetterInventory live setting synchronization tests passed.")
 

@@ -194,7 +194,8 @@ function Adapter.poll(handle)
 	end
 
 	local done = read_file(handle.done_path, 64)
-	if not done then
+	-- An empty or digit-less done file is still being written.
+	if not done or not string.match(done, "%d") then
 		return { done = false }
 	end
 	handle.completed = true
@@ -219,7 +220,8 @@ function Adapter.cleanup(handle)
 	if type(handle) ~= "table" then
 		return true
 	end
-	if not handle.completed then
+	-- A done file means the process already exited; its PID may have been reused.
+	if not handle.completed and not read_file(handle.done_path, 64) then
 		local pid_text = read_file(handle.pid_path, 32)
 		local pid = tonumber(pid_text and string.match(pid_text, "%d+") or nil)
 		local api = io_api()

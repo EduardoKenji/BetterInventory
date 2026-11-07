@@ -153,6 +153,63 @@ def main() -> None:
     assert "trap 'cleanup_child; exit 143' HUP INT TERM" in wine_source
     assert 'child_pid=$!; wait \\"$child_pid\\"; code=$?' in wine_source
 
+    # Cleanup never kills a PID whose done file already exists (the PID may have
+    # been reused), and an empty or digit-less done file is not "done" yet.
+    lua.globals().windows_adapter = windows_adapter
+    lua.globals().wine_adapter = wine_adapter
+    outcome = lua.execute(
+        r"""
+        local files, popens = {}, {}
+        local real_io = io
+        io = {
+            open = function(path)
+                local content = files[path]
+                if content == nil then return nil end
+                return {
+                    seek = function(_, whence) return whence == "end" and #content or 0 end,
+                    read = function() return content end,
+                    close = function() end,
+                }
+            end,
+            popen = function(command)
+                popens[#popens + 1] = command
+                return {read = function() return nil end, close = function() end}
+            end,
+        }
+        local function handle(kind)
+            return {
+                done_path = "done_" .. kind, status_path = "status_" .. kind, output_path = "out_" .. kind,
+                pid_path = "pid_" .. kind, pid = 4321,
+            }
+        end
+        local result = {}
+        for kind, adapter in pairs({win = windows_adapter, wine = wine_adapter}) do
+            files["pid_" .. kind] = "4321"
+            local pending = handle(kind)
+            files["done_" .. kind] = ""
+            result[kind .. "_empty_done"] = adapter.poll(pending).done
+            files["done_" .. kind] = "oops"
+            result[kind .. "_digitless_done"] = adapter.poll(pending).done
+            files["done_" .. kind] = "0" .. string.char(13, 10)
+            result[kind .. "_real_done"] = adapter.poll(handle(kind)).done
+            popens = {}
+            adapter.cleanup(handle(kind))
+            result[kind .. "_kills_after_done_file"] = #popens
+            files["done_" .. kind] = nil
+            adapter.cleanup(handle(kind))
+            result[kind .. "_kills_without_done_file"] = #popens
+        end
+        io = real_io
+        return result
+        """
+    )
+    for kind in ("win", "wine"):
+        assert outcome[f"{kind}_empty_done"] is False
+        assert outcome[f"{kind}_digitless_done"] is False
+        assert outcome[f"{kind}_real_done"] is True
+        assert outcome[f"{kind}_kills_after_done_file"] == 0
+        assert outcome[f"{kind}_kills_without_done_file"] == 1
+
 
 if __name__ == "__main__":
     main()

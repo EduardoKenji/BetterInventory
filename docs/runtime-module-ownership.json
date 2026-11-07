@@ -95,7 +95,7 @@
     "BetterInventory_material_safety.lua": {"category": "ui-material-contract", "risk": "critical", "dependencies": []},
     "BetterInventory_runtime.lua": {"category": "runtime-hooks-and-lifecycle", "risk": "critical", "dependencies": []},
     "BetterInventory_runtime_lifecycle.lua": {"category": "reload-view-ownership", "risk": "critical", "dependencies": []},
-    "BetterInventory_search_integration.lua": {"category": "search-game-adapter", "risk": "high", "dependencies": ["BetterInventory_discard_policy.lua", "BetterInventory_search_index.lua", "BetterInventory_search_query.lua", "BetterInventory_search_runtime.lua"]},
+    "BetterInventory_search_integration.lua": {"category": "search-game-adapter", "risk": "high", "dependencies": ["BetterInventory_search_index.lua", "BetterInventory_search_query.lua", "BetterInventory_search_runtime.lua"]},
     "BetterInventory_search_hooks.lua": {"category": "search-runtime-hooks", "risk": "high", "dependencies": []},
     "BetterInventory_search_index.lua": {"category": "search-projection-cache", "risk": "high", "dependencies": []},
     "BetterInventory_search_query.lua": {"category": "pure-search-domain", "risk": "high", "dependencies": []},

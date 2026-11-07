@@ -218,9 +218,10 @@ Lantern.update_lantern_inventory_section = function(mod, view)
 	end
 
 	local hosted = view._better_inventory_lantern_section_widget ~= nil
+	local preview_active = lantern_preview_is_active(view)
 	local probe_count = (probe.count or RECOMMENDATION_POLL_INTERVAL) + 1
 	local probe_due = probe_count >= RECOMMENDATION_POLL_INTERVAL
-	local state_changed = probe.state ~= state or probe.widget ~= widget or probe.entry ~= entry or probe.signature ~= state.sig or probe.slot ~= selected_slot or probe.slot_name ~= selected_slot_name or probe.preview ~= view.is_previewing_item or probe.hosted ~= hosted
+	local state_changed = probe.state ~= state or probe.widget ~= widget or probe.entry ~= entry or probe.signature ~= state.sig or probe.slot ~= selected_slot or probe.slot_name ~= selected_slot_name or probe.preview ~= preview_active or probe.hosted ~= hosted
 
 	if not probe_due and not state_changed then
 		probe.count = probe_count
@@ -235,10 +236,10 @@ Lantern.update_lantern_inventory_section = function(mod, view)
 	probe.signature = state.sig
 	probe.slot = selected_slot
 	probe.slot_name = selected_slot_name
-	probe.preview = view.is_previewing_item
+	probe.preview = preview_active
 	probe.hosted = hosted
 
-	if not lantern_preview_is_active(view) then
+	if not preview_active then
 		restore_lantern_weapon_panel(view, true)
 
 		return false
