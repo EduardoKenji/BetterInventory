@@ -165,7 +165,12 @@ def main() -> None:
 
     lua.execute(
         r'''
+        facade_discard = {
+            equipped_gear_ids = function() return {facade_loadout_weapon = true} end,
+            is_perfect_roll_weapon = function() return true end,
+        }
         facade = {
+            _discard_policy = facade_discard,
             begin_view_session = function() begins = begins + 1 end,
             register_view_session_cleanup = function(_, _, callback)
                 cleanups = cleanups + 1
@@ -234,7 +239,7 @@ def main() -> None:
             equipped_item, {view = fallback_equipped_view}
         )
         missing_equipped = last_index_dependencies.is_equipped({}, {})
-        loadout_match = last_index_dependencies.is_loadout({gear_id = "loadout_weapon"})
+        loadout_match = last_index_dependencies.is_loadout({gear_id = "facade_loadout_weapon"})
         new_match = last_index_dependencies.is_new({}, {entry = {new_item_marker = true}})
         compact_standard, compact_heavy = last_index_dependencies.compact_perk_search_terms(
             "weapon_trait_melee_common_wield_increased_armored_damage",
@@ -284,6 +289,14 @@ def main() -> None:
     assert lua.globals().fallback_equipped is True
     assert lua.globals().missing_equipped is False
     assert lua.globals().loadout_match is True
+    # The facade's DiscardPolicy instance is shared, not a second io_dofile copy
+    # whose caches Features.clear_runtime_caches cannot reach.
+    assert lua.execute(
+        "return last_index_dependencies.is_loadout({gear_id = 'facade_loadout_weapon'})"
+    ) is True
+    assert lua.execute(
+        "return last_index_dependencies.is_loadout({gear_id = 'loadout_weapon'})"
+    ) is False
     assert lua.globals().compact_curio_standard is None
     assert lua.globals().compact_curio_heavy == "Ability Regen"
     assert lua.globals().compact_curio_provider_id == "gadget_cooldown_reduction"

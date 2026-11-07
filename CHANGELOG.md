@@ -49,6 +49,8 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Settings: code fallbacks used before a value is saved (first load) now match the data.lua defaults for the new-item highlight colour (green, not equipped-item gold), weapon perk/blessing text opacity (80%), rarity rating modes and card-background colour, Character Overview vertical rating, native Curio overlay and Curio name mode (two lines), perk/blessing/dump-stat display, the Games Lantern inventory section, the Curio buyer target mode (characters) and perfect-roll sort priority.
 - Settings: Mod Options greying for perk rank symbols, Curio display profile, Auto Crafter mastery/perk/blessing rows, the pulsing-dashes animation flag and the Auto Crafter status HUD now use the same unset defaults as the code they control.
 - Tests: a drift guard compares literal-ID `mod:get("id")` fallbacks in runtime Lua with data.lua defaults (dynamic IDs are not covered); the documented fail-closed Curio buyer scan gates are allowlisted.
+- Search: the full-width `＆`, `：` and ideographic space (U+3000) typed by zh-CN IMEs now act as `&`, `:` and a space in search queries.
+- Search: the search integration now shares the Features discard-policy instance, so clearing runtime caches also clears its perfect-roll cache (it previously loaded a separate copy).
 
 ## 3.7.4 - Unreleased
 

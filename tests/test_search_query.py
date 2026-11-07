@@ -345,6 +345,12 @@ def main() -> None:
     assert query.matches(None, plasma) is True
     assert query.matches(compile_query("plasma"), None) is False
 
+    # zh-CN IME full-width separators behave like their ASCII forms.
+    assert query.matches(compile_query("plasma＆blessing：cycler"), plasma) is True
+    assert query.matches(compile_query("plasma　＆　bless：gets hot"), plasma) is True
+    assert query.matches(compile_query("name：　plasma gun"), plasma) is True
+    assert len(compile_query("a＆b＆c").clauses) == 3
+
     # A bounded repeated compile/match soak leaves no record-owned state and
     # proves matching does not mutate the projection.
     before = plasma.text[1]
