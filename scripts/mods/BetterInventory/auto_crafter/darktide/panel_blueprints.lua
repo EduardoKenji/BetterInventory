@@ -241,13 +241,6 @@ local function summary_line_passes(width)
 	}
 end
 
-local function status_block_passes(width)
-	return {
-		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body(255, true), size = { width, 18 } } },
-		{ pass_type = "text", value_id = "detail", style = { font_size = 13, font_type = "proxima_nova_medium", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body_sub_header(255, true), size = { width, 30 }, offset = { 0, 18, 1 } } },
-	}
-end
-
 local function queue_job_passes(width, height, highlighted, entry)
 	height = height or QUEUE_JOB_ROW_HEIGHT
 	local border_color = highlighted and Color.terminal_corner_selected(255, true) or Color.terminal_frame(255, true)
@@ -307,18 +300,6 @@ local function section_header_passes(width)
 		{ pass_type = "text", value_id = "label", style = { font_size = 18, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { width - 115, SECTION_ROW_HEIGHT }, offset = { 10, 0, 3 } } },
 		{ pass_type = "text", value_id = "detail", style = { font_size = 14, font_type = "proxima_nova_medium", text_horizontal_alignment = "right", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { 50, SECTION_ROW_HEIGHT }, offset = { width - 94, 0, 3 } } },
 		{ pass_type = "text", style_id = "chevron", value_id = "chevron", style = { font_size = 18, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 40, SECTION_ROW_HEIGHT }, offset = { width - 40, 0, 4 } } },
-	}
-end
-
-local function compact_selector_passes(width)
-	local selector_width = 235
-	local selector_x = width - selector_width
-	return {
-		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { selector_x - 8, COMPACT_ROW_HEIGHT } } },
-		{ content_id = "hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { selector_width, COMPACT_ROW_HEIGHT }, offset = { selector_x, 0, 5 } } },
-		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { selector_width, COMPACT_ROW_HEIGHT }, offset = { selector_x, 0, 1 } } },
-		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { selector_width, COMPACT_ROW_HEIGHT }, offset = { selector_x, 0, 2 } } },
-		{ pass_type = "text", value_id = "detail", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { selector_width, COMPACT_ROW_HEIGHT }, offset = { selector_x, 0, 3 } } },
 	}
 end
 
@@ -613,16 +594,12 @@ PanelBlueprints.definitions = {
 
 			if variant == "title" then
 				return title_passes(width)
-			elseif variant == "status" then
-				return status_block_passes(width)
 			elseif variant == "queue_job" then
 				return queue_job_passes(width, entry.size[2], entry.initial_content and entry.initial_content.queue_current == true, entry)
 			elseif variant == "currency" then
 				return currency_row_passes(width)
 			elseif variant == "section" then
 				return section_header_passes(width)
-			elseif variant == "selector" then
-				return compact_selector_passes(width)
 			elseif variant == "checkbox" then
 				return compact_checkbox_passes(width, entry.size[2])
 			elseif variant == "stepper" then

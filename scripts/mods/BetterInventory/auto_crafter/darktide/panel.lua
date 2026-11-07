@@ -26,7 +26,6 @@ local PANEL_HEIGHT = 520
 local ANCHORED_PANEL_GAP = 72
 local ROW_HEIGHT = 32
 local COMPACT_ROW_HEIGHT = 26
-local STATUS_ROW_HEIGHT = 50
 local CURRENCY_ROW_HEIGHT = 26
 local QUEUE_JOB_ROW_HEIGHT = 110
 local STAT_GRID_BUTTON_HEIGHT = 30
@@ -385,6 +384,11 @@ local function offer_selection_key(offer)
 	return selection_identity_key(kind, value)
 end
 
+local function set_steppers_disabled(content, disabled)
+	if content.decrease_hotspot then content.decrease_hotspot.disabled = disabled end
+	if content.increase_hotspot then content.increase_hotspot.disabled = disabled end
+end
+
 function Panel.new(dependencies)
 	dependencies = dependencies or {}
 
@@ -496,8 +500,6 @@ function Panel.new(dependencies)
 
 		if variant == "title" or variant == "section" then
 			height = SECTION_ROW_HEIGHT
-		elseif variant == "status" then
-			height = STATUS_ROW_HEIGHT
 		elseif variant == "queue_job" then
 			height = options.height or QUEUE_JOB_ROW_HEIGHT
 		elseif variant == "currency" then
@@ -535,7 +537,6 @@ function Panel.new(dependencies)
 				queue_removable = options.queue_removable == true,
 				queue_selected = options.queue_selected == true,
 				stat_count = 0,
-				stat_pressed_callbacks = {},
 				custom_stat_callbacks = {},
 				custom_stat_total = "0/380",
 				custom_stat_total_value = 0,
@@ -1026,19 +1027,10 @@ function Panel.new(dependencies)
 		return ok and result ~= false
 	end
 
-	function self:_cycle_setting(setting_id, values, default_value)
-		local current = self:_setting(setting_id, default_value)
-		local next_index = 1
-
-		for index, value in ipairs(values) do
-			if value == current then
-				next_index = index % #values + 1
-
-				break
-			end
-		end
-
-		self:_set_setting(setting_id, values[next_index])
+	function self:_disarm_queue_craft()
+		self._queue_craft_armed = false
+		self._queue_craft_confirmation_signature = nil
+		self._queue_craft_confirmation_text = nil
 	end
 
 	function self:_adjust_numeric_setting(setting_id, default_value, minimum, maximum, step)
@@ -1098,9 +1090,7 @@ function Panel.new(dependencies)
 			if queue.state ~= "staged" or type(self._games_lantern_update_queue_custom_stat) ~= "function" then return false end
 			local ok, updated = pcall(self._games_lantern_update_queue_custom_stat, index, current + delta)
 			if ok and updated == true then
-				self._queue_craft_armed = false
-				self._queue_craft_confirmation_signature = nil
-				self._queue_craft_confirmation_text = nil
+				self:_disarm_queue_craft()
 				self:_queue_layout(1)
 			end
 
@@ -1497,9 +1487,7 @@ function Panel.new(dependencies)
 			end
 			local ok, updated = pcall(self._games_lantern_update_queue_trait, kind, target_index, selected)
 			if ok and updated == true then
-				self._queue_craft_armed = false
-				self._queue_craft_confirmation_signature = nil
-				self._queue_craft_confirmation_text = nil
+				self:_disarm_queue_craft()
 				self:_queue_layout(1)
 			end
 
@@ -1684,9 +1672,7 @@ function Panel.new(dependencies)
 						if not queue_active and type(self._games_lantern_select_queue_job) == "function" then
 							local ok, selected_job = pcall(self._games_lantern_select_queue_job, queue_index)
 							if ok and selected_job == true then
-								self._queue_craft_armed = false
-								self._queue_craft_confirmation_signature = nil
-								self._queue_craft_confirmation_text = nil
+								self:_disarm_queue_craft()
 								self:_queue_layout(1)
 							end
 						end
@@ -1695,9 +1681,7 @@ function Panel.new(dependencies)
 						if not queue_active and #queue_jobs > 1 and type(self._games_lantern_remove_queue_job) == "function" then
 							local ok, removed, reason = pcall(self._games_lantern_remove_queue_job, queue_index)
 							if ok and removed == true then
-								self._queue_craft_armed = false
-								self._queue_craft_confirmation_signature = nil
-								self._queue_craft_confirmation_text = nil
+								self:_disarm_queue_craft()
 								self:_queue_layout(1)
 							else
 								log("error", "Games Lantern queue-card removal failed: " .. tostring(ok and reason or removed))
@@ -1757,9 +1741,7 @@ function Panel.new(dependencies)
 					variant = "action",
 					action = function()
 						pcall(self._games_lantern_clear)
-						self._queue_craft_armed = false
-						self._queue_craft_confirmation_signature = nil
-						self._queue_craft_confirmation_text = nil
+						self:_disarm_queue_craft()
 						self:_queue_layout(1)
 					end,
 				}))
@@ -1827,12 +1809,7 @@ function Panel.new(dependencies)
 					local current_enabled = is_enabled()
 					widget.content.enabled = current_enabled
 					widget.content.detail = current_enabled and self:_target_policy_text(setting_id) or unavailable_text
-					if widget.content.decrease_hotspot then
-						widget.content.decrease_hotspot.disabled = not current_enabled
-					end
-					if widget.content.increase_hotspot then
-						widget.content.increase_hotspot.disabled = not current_enabled
-					end
+					set_steppers_disabled(widget.content, not current_enabled)
 				end,
 			}))
 		end
@@ -1961,8 +1938,7 @@ function Panel.new(dependencies)
 						widget.content.detail = integer_text(self:_setting("auto_crafter_dump_stat_target", 60))
 						widget.content.comparison_detail = self:_dump_comparison_text()
 						if widget.content.comparison_hotspot then widget.content.comparison_hotspot.disabled = queue_owned end
-						if widget.content.decrease_hotspot then widget.content.decrease_hotspot.disabled = queue_owned end
-						if widget.content.increase_hotspot then widget.content.increase_hotspot.disabled = queue_owned end
+						set_steppers_disabled(widget.content, queue_owned)
 					end,
 				}))
 			end
@@ -1981,8 +1957,7 @@ function Panel.new(dependencies)
 					refresh = function(widget)
 						widget.content.detail = integer_text(self:_setting("auto_crafter_docket_cap", 500000))
 						widget.content.enabled = not queue_active
-						if widget.content.decrease_hotspot then widget.content.decrease_hotspot.disabled = queue_active end
-						if widget.content.increase_hotspot then widget.content.increase_hotspot.disabled = queue_active end
+						set_steppers_disabled(widget.content, queue_active)
 					end,
 				}))
 				add_checkbox("auto_crafter_docket_cap_includes_mastery", "auto_crafter_docket_cap_includes_mastery", "Include mastery leveling purchases in Ordo dockets cap", false)
@@ -2002,8 +1977,7 @@ function Panel.new(dependencies)
 					refresh = function(widget)
 						widget.content.detail = integer_text(self:_setting("auto_crafter_max_purchases", 100))
 						widget.content.enabled = not queue_active
-						if widget.content.decrease_hotspot then widget.content.decrease_hotspot.disabled = queue_active end
-						if widget.content.increase_hotspot then widget.content.increase_hotspot.disabled = queue_active end
+						set_steppers_disabled(widget.content, queue_active)
 					end,
 				}))
 			end
@@ -2099,8 +2073,7 @@ function Panel.new(dependencies)
 					end,
 					refresh = function(widget)
 						widget.content.detail = self:_myfavorites_color_text()
-						if widget.content.decrease_hotspot then widget.content.decrease_hotspot.disabled = queue_active end
-						if widget.content.increase_hotspot then widget.content.increase_hotspot.disabled = queue_active end
+						set_steppers_disabled(widget.content, queue_active)
 					end,
 				}))
 			end
@@ -2116,8 +2089,7 @@ function Panel.new(dependencies)
 				end,
 				refresh = function(widget)
 					widget.content.detail = self:_acquisition_mode_text()
-					if widget.content.decrease_hotspot then widget.content.decrease_hotspot.disabled = queue_active end
-					if widget.content.increase_hotspot then widget.content.increase_hotspot.disabled = queue_active end
+					set_steppers_disabled(widget.content, queue_active)
 				end,
 			}))
 			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", true, function()
@@ -2205,9 +2177,7 @@ function Panel.new(dependencies)
 					if custom_stat_error then self:_notify_craft_blocked(custom_stat_error) return end
 					local authority, authority_text = self:_games_lantern_cost_authority()
 					if not authority then
-						self._queue_craft_armed = false
-						self._queue_craft_confirmation_signature = nil
-						self._queue_craft_confirmation_text = nil
+						self:_disarm_queue_craft()
 						log("error", "Games Lantern craft blocked: aggregate cost authority unavailable")
 						self:_queue_layout(1)
 						return
@@ -2227,9 +2197,7 @@ function Panel.new(dependencies)
 						return
 					end
 					local confirmed_signature = self._queue_craft_confirmation_signature
-					self._queue_craft_armed = false
-					self._queue_craft_confirmation_signature = nil
-					self._queue_craft_confirmation_text = nil
+					self:_disarm_queue_craft()
 					local ok, started, reason = pcall(self._start_games_lantern_queue, true, confirmed_signature)
 					if not ok or started ~= true then
 						log("error", "Games Lantern craft did not start: " .. tostring(ok and reason or started))
@@ -2606,9 +2574,7 @@ function Panel.new(dependencies)
 		self._trait_options_cache = nil
 		self._queue_signature = nil
 		self._import_signature = nil
-		self._queue_craft_armed = false
-		self._queue_craft_confirmation_signature = nil
-		self._queue_craft_confirmation_text = nil
+		self:_disarm_queue_craft()
 		self._queue_snapshot_cache = nil
 		self._queue_snapshot_signature = nil
 		self._import_snapshot_cache = nil
@@ -2660,9 +2626,7 @@ function Panel.new(dependencies)
 		self._trait_options_cache = nil
 		self._queue_signature = nil
 		self._import_signature = nil
-		self._queue_craft_armed = false
-		self._queue_craft_confirmation_signature = nil
-		self._queue_craft_confirmation_text = nil
+		self:_disarm_queue_craft()
 		self._queue_snapshot_cache = nil
 		self._queue_snapshot_signature = nil
 		self._import_snapshot_cache = nil
