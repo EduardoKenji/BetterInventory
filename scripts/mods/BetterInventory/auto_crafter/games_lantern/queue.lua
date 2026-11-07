@@ -80,8 +80,22 @@ local function valid_build(build)
 	return true
 end
 
+-- A queue with any of these states owns the account or is still settling a stop.
+local BUSY_STATES = {
+	starting = true, selecting = true, preflighting = true, dispatching = true, running = true,
+	waiting_next = true, stopping = true, quarantined = true, reconciliation_required = true,
+}
+-- Busy minus the states that already have a stop in flight.
+local STOPPABLE_STATES = {
+	starting = true, selecting = true, preflighting = true, dispatching = true, running = true, waiting_next = true,
+}
+-- Busy states that still need the Brunt view; running and dispatching jobs deliberately survive a view close.
+local PRE_DISPATCH_STATES = {
+	starting = true, selecting = true, preflighting = true, waiting_next = true,
+}
+
 local function unresolved_state(state)
-	return state == "starting" or state == "selecting" or state == "preflighting" or state == "dispatching" or state == "running" or state == "waiting_next" or state == "stopping" or state == "quarantined" or state == "reconciliation_required"
+	return BUSY_STATES[state] == true
 end
 
 function Queue.new(dependencies)
@@ -653,6 +667,7 @@ function Queue.new(dependencies)
 			queue_id = self._queue_id,
 			character_id = self._character_id,
 			state = self._state,
+			busy = BUSY_STATES[self._state] == true,
 			current_index = self._current_index,
 			planner_index = self._planner_index,
 			job_count = #jobs,
@@ -668,6 +683,23 @@ function Queue.new(dependencies)
 
 	function self:state()
 		return self._state
+	end
+
+	function self:is_busy()
+		return BUSY_STATES[self._state] == true
+	end
+
+	function self:is_stoppable()
+		return STOPPABLE_STATES[self._state] == true
+	end
+
+	-- Busy with a stop already in flight (stopping, quarantined, reconciliation_required).
+	function self:is_settling()
+		return BUSY_STATES[self._state] == true and STOPPABLE_STATES[self._state] ~= true
+	end
+
+	function self:is_pre_dispatch()
+		return PRE_DISPATCH_STATES[self._state] == true
 	end
 
 	function self:stop_requested()
@@ -746,6 +778,7 @@ function Queue.new(dependencies)
 			last_error = self._last_error,
 			queue_id = self._queue_id,
 			state = self._state,
+			busy = BUSY_STATES[self._state] == true,
 		}
 
 		return self._presentation_cache

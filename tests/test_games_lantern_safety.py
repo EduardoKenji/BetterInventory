@@ -340,7 +340,7 @@ def main() -> None:
     assert "_queue_craft_confirmation_signature" in panel
     assert "_queue_craft_confirmation_text" in panel
     assert "presentation_snapshot()" in facade
-    assert 'games_lantern_import:state() == "fetching"' in facade
+    assert "games_lantern_import:is_busy()" in facade
     assert "controller:is_busy()" in facade
     busy_body = facade.split("function AutoCrafter.is_busy()", 1)[1].split("\nend", 1)[0]
     assert ":snapshot()" not in busy_body

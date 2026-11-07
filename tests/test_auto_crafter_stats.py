@@ -972,7 +972,7 @@ def main() -> None:
     active_manual_workflow = lua.table_from({"search": lua.table_from({"running": True})})
     settling_workflow = lua.table_from({"operation_inflight": True})
     staged_queue = lua.table_from({"state": "staged"})
-    running_queue = lua.table_from({"state": "running"})
+    running_queue = lua.table_from({"state": "running", "busy": True})
     assert panel_module.workflow_active(idle_workflow, staged_queue) is False
     assert panel_module.workflow_active(active_manual_workflow, staged_queue) is True
     assert panel_module.workflow_active(settling_workflow, staged_queue) is True

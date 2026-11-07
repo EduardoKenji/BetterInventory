@@ -350,6 +350,29 @@ def main() -> None:
     assert editor.update_selected_trait(editor, "perk", 2, to_lua({"id": "p5", "rarity": 4}))[0] is False
     assert editor.start(editor) is False  # no execution dependencies; edit lock still applies after start attempt
 
+    # State predicates are the single source for busy/stoppable/pre-dispatch/settling decisions.
+    # running and dispatching are stoppable but not pre-dispatch: a Brunt view close must not stop them.
+    expected = {
+        "empty": (), "staged": (), "complete": (), "failed": (), "stopped": (), "blocked": (),
+        "starting": ("busy", "stoppable", "pre_dispatch"),
+        "selecting": ("busy", "stoppable", "pre_dispatch"),
+        "preflighting": ("busy", "stoppable", "pre_dispatch"),
+        "waiting_next": ("busy", "stoppable", "pre_dispatch"),
+        "dispatching": ("busy", "stoppable"),
+        "running": ("busy", "stoppable"),
+        "stopping": ("busy", "settling"),
+        "quarantined": ("busy", "settling"),
+        "reconciliation_required": ("busy", "settling"),
+    }
+    predicates = {"busy": "is_busy", "stoppable": "is_stoppable", "pre_dispatch": "is_pre_dispatch", "settling": "is_settling"}
+    probe = queue_module.new(to_lua({}))
+    for state, flags in expected.items():
+        probe._state = state
+        for flag, method in predicates.items():
+            assert probe[method](probe) is (flag in flags), (state, method)
+        assert probe.snapshot(probe)["busy"] is ("busy" in flags), state
+        assert probe.presentation_snapshot(probe)["busy"] is ("busy" in flags), state
+
 
 if __name__ == "__main__":
     main()

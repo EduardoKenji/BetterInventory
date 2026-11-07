@@ -110,6 +110,9 @@ def test_queue_stop_polling():
         local settled, requested, state = 0, true, "stopping"
         local queue = {
             state=function() return state end,
+            -- The loop below only visits settling states, so the predicate is constant here.
+            is_settling=function() return true end,
+            is_pre_dispatch=function() return false end,
             stop_requested=function() return requested end,
             on_event=function(_, event)
                 assert(event == "stop_settled")

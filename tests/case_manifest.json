@@ -83,7 +83,7 @@
     {"name": "hub_hotkey_menus_psykanium_brunt_runtime", "risk": "critical", "start_line": 147, "end_line": 172}
   ],
   "test_auto_crafter_facade.py": [
-    {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 16, "end_line": 238}
+    {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 16, "end_line": 242}
     ],
     "test_auto_crafter_hud_policy.py": [
       {"name": "terminal_dirty_wakeup_bounded_expiry_and_phase_labels", "risk": "critical", "start_line": 1, "end_line": 101}
@@ -161,7 +161,7 @@
     {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 18, "end_line": 101},
     {"name": "stop_failure_and_boundary_guards", "risk": "critical", "start_line": 102, "end_line": 225},
     {"name": "staged_queue_single-weapon_removal", "risk": "critical", "start_line": 226, "end_line": 318},
-    {"name": "staged_queue_profile_editor", "risk": "critical", "start_line": 319, "end_line": 352}
+    {"name": "staged_queue_profile_editor", "risk": "critical", "start_line": 319, "end_line": 374}
     ],
     "test_games_lantern_custom_stats.py": [
       {"name": "identity_bound_exact_profile_and_malformed_rejection", "risk": "critical", "start_line": 1, "end_line": 74}
@@ -185,15 +185,15 @@
   "test_games_lantern_transport.py": [
     {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 212}
     ],
-    "test_games_lantern_import_controller.py": [
-      {"name": "atomic_import_lifecycle_stale_callback_and_duplicate_paste_guard", "risk": "critical", "start_line": 11, "end_line": 123},
-      {"name": "explicit_ambiguous_weapon_choice", "risk": "critical", "start_line": 124, "end_line": 166},
-      {"name": "invalid_clipboard_and_transport_failure_diagnostics", "risk": "critical", "start_line": 167, "end_line": 203},
-      {"name": "canonical_archetype_mismatch_diagnostics", "risk": "critical", "start_line": 204, "end_line": 216},
-      {"name": "character_switch_settlement_fails_before_resolution", "risk": "critical", "start_line": 217, "end_line": 249},
-      {"name": "native_store_settlement_and_catalog_revalidation", "risk": "critical", "start_line": 251, "end_line": 311},
-      {"name": "presentation_cache_release_on_cancel_and_clear", "risk": "high", "start_line": 312, "end_line": 327},
-      {"name": "bounded_wait_deadline_cancel_retry_and_late_catalogue", "risk": "critical", "start_line": 328, "end_line": 362}
+  "test_games_lantern_import_controller.py": [
+    {"name": "atomic_import_lifecycle_stale_callback_and_duplicate_paste_guard", "risk": "critical", "start_line": 11, "end_line": 123},
+    {"name": "explicit_ambiguous_weapon_choice", "risk": "critical", "start_line": 124, "end_line": 166},
+    {"name": "invalid_clipboard_and_transport_failure_diagnostics", "risk": "critical", "start_line": 167, "end_line": 203},
+    {"name": "canonical_archetype_mismatch_diagnostics", "risk": "critical", "start_line": 204, "end_line": 216},
+    {"name": "character_switch_settlement_fails_before_resolution", "risk": "critical", "start_line": 217, "end_line": 249},
+    {"name": "native_store_settlement_and_catalog_revalidation", "risk": "critical", "start_line": 251, "end_line": 318},
+    {"name": "presentation_cache_release_on_cancel_and_clear", "risk": "high", "start_line": 319, "end_line": 334},
+    {"name": "bounded_wait_deadline_cancel_retry_and_late_catalogue", "risk": "critical", "start_line": 335, "end_line": 369}
     ],
     "test_games_lantern_compatibility.py": [
       {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 176}

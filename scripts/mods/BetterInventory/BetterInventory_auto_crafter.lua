@@ -1056,10 +1056,7 @@ function AutoCrafter.configure(dependencies)
 			return false, "auto_crafter_busy"
 		end
 
-		local queue_snapshot = games_lantern_queue and games_lantern_queue:snapshot()
-		local queue_state = queue_snapshot and queue_snapshot.state
-
-		if queue_state == "starting" or queue_state == "selecting" or queue_state == "preflighting" or queue_state == "dispatching" or queue_state == "running" or queue_state == "waiting_next" or queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required" then
+		if games_lantern_queue and games_lantern_queue:is_busy() then
 			return false, "games_lantern_queue_busy"
 		end
 
@@ -1205,8 +1202,7 @@ function AutoCrafter.configure(dependencies)
 			return controller and controller:start_purchase_search() or false
 		end,
 		stop_active_run = function()
-			local queue_state = games_lantern_queue and games_lantern_queue:snapshot()
-			if queue_state and (queue_state.state == "running" or queue_state.state == "selecting" or queue_state.state == "preflighting" or queue_state.state == "dispatching" or queue_state.state == "waiting_next" or queue_state.state == "starting") then
+			if games_lantern_queue and games_lantern_queue:is_stoppable() then
 				return games_lantern_queue:stop("user_stopped")
 			end
 
@@ -1419,15 +1415,14 @@ function AutoCrafter.on_view_closed(view)
 	end
 
 	if games_lantern_import then
-		local import_state = games_lantern_import:snapshot()
-		if import_state and (import_state.state == "fetching" or import_state.state == "waiting_for_store" or import_state.state == "resolving_catalogues") then
+		if games_lantern_import:is_busy() then
 			pcall(games_lantern_import.cancel, games_lantern_import, "brunt_view_closed")
 		end
 	end
 
 	if games_lantern_queue then
-		local queue_state = games_lantern_queue:snapshot()
-		if queue_state and (queue_state.state == "starting" or queue_state.state == "selecting" or queue_state.state == "preflighting" or queue_state.state == "waiting_next") then
+		-- Only pre-dispatch states: a running or dispatching queue keeps going after the Brunt view closes.
+		if games_lantern_queue:is_pre_dispatch() then
 			pcall(games_lantern_queue.stop, games_lantern_queue, "brunt_view_closed")
 		end
 	end
@@ -1447,8 +1442,7 @@ function AutoCrafter.on_context_exit(reason)
 	end
 
 	if games_lantern_queue then
-		local queue_state = games_lantern_queue:snapshot()
-		if queue_state and (queue_state.state == "running" or queue_state.state == "selecting" or queue_state.state == "preflighting" or queue_state.state == "dispatching" or queue_state.state == "waiting_next" or queue_state.state == "starting") then
+		if games_lantern_queue:is_stoppable() then
 			pcall(games_lantern_queue.stop, games_lantern_queue, reason or "context_exit")
 		end
 	end
@@ -1485,9 +1479,7 @@ function AutoCrafter.on_setting_changed(setting_id)
 end
 
 local function settle_queue_stop()
-	local queue_state = games_lantern_queue and games_lantern_queue:state()
-
-	if queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required" then
+	if games_lantern_queue and games_lantern_queue:is_settling() then
 		local busy_ok, busy = pcall(controller.is_busy, controller)
 
 		-- A controller whose is_busy() errors is dead and cannot hold work, so it counts as settled.
@@ -1509,7 +1501,7 @@ function AutoCrafter.update(dt)
 		end
 	end
 
-	if games_lantern_import and (games_lantern_import:state() == "fetching" or games_lantern_import:state() == "waiting_for_store" or games_lantern_import:state() == "resolving_catalogues") then
+	if games_lantern_import and games_lantern_import:is_busy() then
 		local import_state_before = games_lantern_import:state()
 		local import_ok, import_error = pcall(games_lantern_import.update, games_lantern_import, dt)
 
@@ -1548,7 +1540,7 @@ function AutoCrafter.update(dt)
 
 		if games_lantern_queue then
 			local queue_state = games_lantern_queue:state()
-			if queue_state == "selecting" or queue_state == "preflighting" or queue_state == "starting" or queue_state == "waiting_next" then
+			if games_lantern_queue:is_pre_dispatch() then
 				local queue_ok, queue_error = pcall(games_lantern_queue.update, games_lantern_queue, dt)
 
 				if not queue_ok then
@@ -1622,20 +1614,16 @@ function AutoCrafter.snapshot()
 end
 
 function AutoCrafter.is_busy()
-	local import_state = games_lantern_import and games_lantern_import:state()
-	local import_busy = import_state == "fetching" or import_state == "waiting_for_store" or import_state == "resolving_catalogues"
-	local queue_state = games_lantern_queue and games_lantern_queue:state()
-	local queue_busy = queue_state == "starting" or queue_state == "selecting" or queue_state == "preflighting" or queue_state == "dispatching" or queue_state == "running" or queue_state == "waiting_next" or queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required"
+	local import_busy = games_lantern_import and games_lantern_import:is_busy() or false
+	local queue_busy = games_lantern_queue and games_lantern_queue:is_busy() or false
 	local controller_busy = controller and controller:is_busy() or false
 
 	return import_busy or queue_busy or controller_busy
 end
 
 function AutoCrafter.needs_update()
-	local import_state = games_lantern_import and games_lantern_import:state()
-	local import_needs_update = import_state == "fetching" or import_state == "waiting_for_store" or import_state == "resolving_catalogues"
-	local queue_state = games_lantern_queue and games_lantern_queue:state()
-	local queue_needs_update = queue_state == "starting" or queue_state == "selecting" or queue_state == "preflighting" or queue_state == "dispatching" or queue_state == "running" or queue_state == "waiting_next" or queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required"
+	local import_needs_update = games_lantern_import and games_lantern_import:is_busy() or false
+	local queue_needs_update = games_lantern_queue and games_lantern_queue:is_busy() or false
 	local controller_needs_update = controller and type(controller.needs_update) == "function" and controller:needs_update() or controller and controller:is_busy() or false
 	local presentation_needs_update = controller ~= nil and (HudPolicy and HudPolicy.presentation_needs_update(presentation_snapshot, #hud_lines, presentation_dirty) or presentation_dirty == true)
 
@@ -1674,8 +1662,7 @@ function AutoCrafter.shutdown()
 	end
 
 	if games_lantern_queue then
-		local queue_state = games_lantern_queue:snapshot()
-		if queue_state and (queue_state.state == "running" or queue_state.state == "selecting" or queue_state.state == "preflighting" or queue_state.state == "dispatching" or queue_state.state == "waiting_next" or queue_state.state == "starting") then
+		if games_lantern_queue:is_stoppable() then
 			pcall(games_lantern_queue.stop, games_lantern_queue, "shutdown")
 		end
 

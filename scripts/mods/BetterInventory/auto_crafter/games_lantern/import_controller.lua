@@ -107,9 +107,8 @@ function ImportController.new(dependencies)
 		end
 
 		local ok, snapshot = pcall(self._queue_snapshot)
-		local state = ok and snapshot and snapshot.state
 
-		return state == "running" or state == "starting" or state == "selecting" or state == "preflighting" or state == "dispatching" or state == "waiting_next" or state == "stopping" or state == "quarantined" or state == "reconciliation_required"
+		return ok and type(snapshot) == "table" and snapshot.busy == true
 	end
 
 	local function fail(reason, payload)
@@ -497,6 +496,12 @@ function ImportController.new(dependencies)
 		return self._state
 	end
 
+	-- Async work in flight. awaiting_weapon_choice is deliberately excluded: it waits on the player, so it
+	-- neither needs updates nor blocks account mutations (the panel still blocks crafting in that state).
+	function self:is_busy()
+		return self._state == "fetching" or self._state == "waiting_for_store" or self._state == "resolving_catalogues"
+	end
+
 	function self:presentation_snapshot()
 		local signature = table.concat({
 			tostring(self._generation or 0),
@@ -525,6 +530,7 @@ function ImportController.new(dependencies)
 			choice_request = choices,
 			last_error = self._last_error,
 			state = self._state,
+			busy = self:is_busy(),
 		}
 
 		return self._presentation_cache

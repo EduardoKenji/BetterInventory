@@ -59,13 +59,17 @@ local function workflow_active(state, queue)
 	local phase3 = state.phase3
 	local phase4 = state.phase4
 	local mastery = state.mastery
-	local queue_state = queue and queue.state
-	local queue_active = queue_state == "running" or queue_state == "selecting" or queue_state == "preflighting" or queue_state == "dispatching" or queue_state == "waiting_next" or queue_state == "starting" or queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required"
+	local queue_active = queue and queue.busy == true
 
 	return queue_active or state.operation_inflight == true or state.operation_quarantined == true or state.reconciliation_required == true or (tonumber(state.auxiliary_inflight_count) or 0) > 0 or search and search.running == true or phase3 and phase3.running == true or phase4 and phase4.running == true or mastery and mastery.running == true or false
 end
 
 Panel.workflow_active = workflow_active
+
+-- awaiting_weapon_choice blocks crafting but is not "busy" (see ImportController:is_busy).
+local function import_blocks_craft(imported)
+	return imported.busy == true or imported.state == "awaiting_weapon_choice"
+end
 
 local function default_section_state()
 	return {
@@ -1606,7 +1610,7 @@ function Panel.new(dependencies)
 		local imported = self:_games_lantern_import()
 		local queue_target = self:_games_lantern_queue_target(queue)
 		local queue_owned = queue_target ~= nil and queue.state ~= "empty"
-		local queue_active = queue_owned and (queue.state == "starting" or queue.state == "selecting" or queue.state == "preflighting" or queue.state == "dispatching" or queue.state == "running" or queue.state == "waiting_next" or queue.state == "stopping" or queue.state == "quarantined" or queue.state == "reconciliation_required")
+		local queue_active = queue_owned and queue.busy == true
 		local entries = {
 			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), "", {
 				variant = "title",
@@ -2158,7 +2162,7 @@ function Panel.new(dependencies)
 		local function run_is_active()
 			return workflow_active(self._controller_state, self:_games_lantern_queue())
 		end
-		local import_busy = imported and (imported.state == "fetching" or imported.state == "waiting_for_store" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
+		local import_busy = imported and import_blocks_craft(imported)
 		local craft_enabled = not run_is_active() and not import_busy
 		local craft_label = queue_owned and self._queue_craft_armed and self:_queue_confirmation_label(queue) or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
 		table.insert(entries, self:_entry(craft_label, queue_owned and self._queue_craft_armed and (self._queue_craft_confirmation_text or "Cost authority unavailable; crafting remains blocked.") or "", {
@@ -2169,7 +2173,7 @@ function Panel.new(dependencies)
 				local imported = self:_games_lantern_import()
 				local queue = self:_games_lantern_queue()
 				local queue_owned = queue and queue.job_count > 0 and queue.state ~= "empty" and queue.state ~= "complete"
-				local import_busy = imported and (imported.state == "fetching" or imported.state == "waiting_for_store" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
+				local import_busy = imported and import_blocks_craft(imported)
 				if workflow_active(self._controller_state, queue) or import_busy then return end
 
 				if (imported and imported.state == "staged" or queue_owned) and type(self._start_games_lantern_queue) == "function" then
@@ -2211,7 +2215,7 @@ function Panel.new(dependencies)
 				local current_import = self:_games_lantern_import()
 				local current_queue = self:_games_lantern_queue()
 				local current_owned = current_queue and current_queue.job_count > 0 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
-				local current_import_busy = current_import and (current_import.state == "fetching" or current_import.state == "waiting_for_store" or current_import.state == "resolving_catalogues" or current_import.state == "awaiting_weapon_choice")
+				local current_import_busy = current_import and import_blocks_craft(current_import)
 				local current_enabled = not workflow_active(self._controller_state, current_queue) and not current_import_busy
 				widget.content.enabled = current_enabled
 				widget.content.hotspot.disabled = not current_enabled
@@ -2358,7 +2362,7 @@ function Panel.new(dependencies)
 			if ctrl_v and not self._ctrl_v_down and type(self._games_lantern_paste) == "function" then
 				local current_queue = self:_games_lantern_queue()
 				local current_owned = current_queue and current_queue.job_count > 0 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
-				local current_active = current_owned and (current_queue.state == "starting" or current_queue.state == "selecting" or current_queue.state == "preflighting" or current_queue.state == "dispatching" or current_queue.state == "running" or current_queue.state == "waiting_next" or current_queue.state == "stopping" or current_queue.state == "quarantined" or current_queue.state == "reconciliation_required")
+				local current_active = current_owned and current_queue.busy == true
 
 				if not current_active then
 					local pasted, paste_error = self:_request_games_lantern_paste()
