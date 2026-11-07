@@ -117,9 +117,17 @@ local FavoriteIntegration = no_op_module(mod:io_dofile("BetterInventory/scripts/
 	favorite_purchase_items = function() return 0 end,
 })
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
-local SearchUI = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_ui"), "BetterInventory_search_ui.lua")
+local SearchUI = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_ui"), "BetterInventory_search_ui.lua", {
+	decorate_definitions = function(definitions) return definitions end,
+})
 local SearchHooks = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_hooks"), "BetterInventory_search_hooks.lua")
-local RuntimeLifecycle = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime_lifecycle"), "BetterInventory_runtime_lifecycle.lua")
+local RuntimeLifecycle = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime_lifecycle"), "BetterInventory_runtime_lifecycle.lua", {
+	present_reused_grid = function(func, item_grid, layout, blueprints, callback_arguments)
+		local function pack(...) return { n = select("#", ...), ... } end
+
+		return pack(func(item_grid, layout, blueprints, (table.unpack or unpack)(callback_arguments, 1, callback_arguments.n)))
+	end,
+})
 local CustomTier = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_custom_tier"), "BetterInventory_custom_tier.lua", {
 	install = function() return false end,
 	on_disabled = function() end,
@@ -148,7 +156,9 @@ GodStatCheckerIntegration.on_enabled = type(GodStatCheckerIntegration.on_enabled
 GodStatCheckerIntegration.on_setting_changed = type(GodStatCheckerIntegration.on_setting_changed) == "function" and GodStatCheckerIntegration.on_setting_changed or function() return false end
 GodStatCheckerIntegration.on_settings_reset = type(GodStatCheckerIntegration.on_settings_reset) == "function" and GodStatCheckerIntegration.on_settings_reset or function() return false end
 CustomTier.set_background_owner_provider(GodStatCheckerIntegration)
-local EquipmentPersistence = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_equipment_persistence"), "BetterInventory_equipment_persistence.lua")
+local EquipmentPersistence = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_equipment_persistence"), "BetterInventory_equipment_persistence.lua", {
+	persist_local_changes = function(_, native_function, view, ...) return native_function(view, ...) end,
+})
 local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_settings"), "BetterInventory_settings.lua", {
 	should_refresh_dependencies = function() return true end,
 })

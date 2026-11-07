@@ -54,6 +54,11 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Games Lantern import: HTML label parsing rejects captures longer than six times the field limit before trimming, so hostile pages with huge interior whitespace runs can no longer freeze the game thread (the trim was quadratic); `&amp;lt;` now decodes to the literal `&lt;` instead of `<`.
 - Games Lantern import: transport cleanup no longer kills a PID once the done file exists (the PID may have been reused), and an empty or digit-less done file is treated as not finished.
 - Games Lantern queue: the native-selection timeout is now 4 seconds of frame time instead of 240 frames (1 second at 240 fps).
+- Auto Crafter: Ctrl+V after a completed Games Lantern queue now replaces it (it was silently refused with `replacement_confirmation_required`); the Paste button and Ctrl+V are the explicit replacement action, and the Auto Crafter's import admission check now runs before the existing queue is cleared, so a rejected import no longer loses it.
+- Startup: if a hot-reloaded module fails to load, equipment persistence, search definitions and grid reuse now fall back to pass-through behaviour instead of a nil-returning stub (which dropped loadout saves and crashed grid creation).
+- Inventory: the Games Lantern recommendation panel reacts to a weapon-preview change on the next frame instead of at the next periodic probe.
+- Options panel: the legacy quick-discard mode and rarity labels end in a plain `  >` instead of mojibake.
+- Errors thrown by native or other mods' grid presenters are rethrown unchanged (level 0), so crash logs no longer blame BetterInventory.
 
 ## 3.7.4 - Unreleased
 

@@ -1889,7 +1889,7 @@ local function present_grid_with_configuration(func, view, layout, on_present_ca
 	active_grid_configuration = previous_configuration
 
 	if not success then
-		error(results[2])
+		error(results[2], 0)
 	end
 
 	return unpack_values(results, 2, result_count)

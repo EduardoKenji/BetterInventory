@@ -2106,7 +2106,7 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	end
 
 	if mode_changed and mode_widget then
-		mode_widget.content.value = mod:localize("quick_discard_mode_" .. discard_mode) .. "  ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Âº"
+		mode_widget.content.value = mod:localize("quick_discard_mode_" .. discard_mode) .. "  >"
 	end
 
 	view._better_inventory_legacy_discard_mode = discard_mode
@@ -2124,7 +2124,7 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 		local rarity_color = rarity_settings and rarity_settings.color or Color.terminal_text_body(255, true)
 
 		discard_content.better_inventory_rarity = rarity
-		discard_content.rarity_label = mod:localize("quick_discard_rarity_" .. rarity) .. "  ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Âº"
+		discard_content.rarity_label = mod:localize("quick_discard_rarity_" .. rarity) .. "  >"
 
 		if discard_widget.style and discard_widget.style.rarity_label then
 			discard_widget.style.rarity_label.text_color = table.clone(rarity_color)

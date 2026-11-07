@@ -1277,13 +1277,17 @@ function AutoCrafter.configure(dependencies)
 		games_lantern_import_snapshot = function()
 			return games_lantern_import and games_lantern_import:presentation_snapshot() or nil
 		end,
-		games_lantern_paste = function(replace_confirmed)
+		games_lantern_paste = function()
+			-- The Paste button and Ctrl+V are the explicit replacement action.
 			local queue_state = games_lantern_queue and games_lantern_queue:snapshot()
 			local existing = queue_state and queue_state.job_count > 0 and queue_state.state ~= "empty"
-			if existing and replace_confirmed ~= true then
-				return false, "replacement_confirmation_required"
-			end
 			if existing then
+				-- Refuse before clearing, so a rejected import never loses the queue.
+				local allowed, allowed_reason = games_lantern_import_allowed()
+				if not allowed then
+					return false, allowed_reason
+				end
+
 				local match_ok, matches, match_reason = pcall(games_lantern_import.clipboard_matches_current, games_lantern_import)
 				if not match_ok then
 					return false, "clipboard_preflight_failed"
