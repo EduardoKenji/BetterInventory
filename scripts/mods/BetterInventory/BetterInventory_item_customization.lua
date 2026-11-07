@@ -306,28 +306,39 @@ local function install_storage_hooks(mod)
 
 	mod:hook("GearService", "on_character_deleted", function(func, gear_service, character_id, ...)
 		local gear_ids = {}
-		local records = customization_records(mod)
 
-		for gear_id, record in pairs(records) do
-			if type(record) == "table" and record.character_id == character_id then
-				gear_ids[gear_id] = true
-			end
-		end
+		-- mod:hook is unprotected: BetterInventory cleanup must never block or
+		-- abort the native character deletion (e.g. a submodule that failed to load).
+		local scan_ok, scan_error = pcall(function()
+			local records = customization_records(mod)
 
-		-- Backfill coverage for records created before character ownership was
-		-- stored, whenever Darktide still has the deleted character's gear cached.
-		for gear_id, gear in pairs(gear_service._cached_gear_list or {}) do
-			if gear and (gear.characterId == character_id or gear.character_id == character_id) then
-				gear_ids[gear_id] = true
+			for gear_id, record in pairs(records) do
+				if type(record) == "table" and record.character_id == character_id then
+					gear_ids[gear_id] = true
+				end
 			end
-		end
+
+			-- Backfill coverage for records created before character ownership was
+			-- stored, whenever Darktide still has the deleted character's gear cached.
+			for gear_id, gear in pairs(gear_service._cached_gear_list or {}) do
+				if gear and (gear.characterId == character_id or gear.character_id == character_id) then
+					gear_ids[gear_id] = true
+				end
+			end
+		end)
 
 		local result = func(gear_service, character_id, ...)
 
-		remove_records(mod, gear_ids)
+		local cleanup_ok, cleanup_error = pcall(function()
+			remove_records(mod, gear_ids)
 
-		if type(mod.is_enabled) == "function" and not mod:is_enabled() then
-			flush_persistence()
+			if type(mod.is_enabled) == "function" and not mod:is_enabled() then
+				flush_persistence()
+			end
+		end)
+
+		if not (scan_ok and cleanup_ok) then
+			mod:warning("Character-deletion cleanup failed: %s", tostring(scan_ok and cleanup_error or scan_error))
 		end
 
 		return result

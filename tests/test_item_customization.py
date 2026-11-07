@@ -327,6 +327,15 @@ def main() -> None:
         mod, "bounded-name", lua.table_from({"name": " \t\n "})
     ) is True
     assert customization.get(mod, "bounded-name") is None
+    # NBSP (written by grid cards) normalizes to a plain space.
+    assert customization.update(
+        mod, "nbsp-name", lua.table_from({"name": "Dueling Sword "})
+    ) is True
+    # Compare inside Lua: the pre-fix name holds raw NBSP bytes lupa cannot decode.
+    assert lua.eval("function(r) return r.name == 'Dueling Sword' end")(
+        customization.get(mod, "nbsp-name")
+    )
+    customization.remove(mod, "nbsp-name")
     customization.update_runtime(mod)
     assert globals_.settings_flushes == 2
     customization.update_runtime(mod)
@@ -505,6 +514,26 @@ def main() -> None:
     customization.on_enabled(mod)
     assert customization.get(mod, "whole-mod-handoff").name == "After Toggle"
     assert settings._custom_item_name_it_owns_names is False
+
+    # A handoff round trip retags only names Name It actually changed; names it
+    # returned unchanged keep their target, whatever its global pattern flag says.
+    globals_.name_it_settings.replace_pattern_name = True
+    customization.update(mod, "keep-primary", lua.table_from({"name": "Keep Primary"}))
+    customization.update(mod, "changed-name", lua.table_from({"name": "Before Change"}))
+    globals_.name_it_settings.replace_pattern_name = False
+    globals_.name_it_settings.name_list["keep-sub"] = "Keep Sub"
+    globals_.name_it_settings.replace_pattern_name = True
+    assert customization.import_name_it_names(mod) == 1
+    assert customization.get(mod, "keep-sub").name_target == "sub"
+    globals_.name_it_settings.replace_pattern_name = False
+    customization.on_disabled(mod)
+    globals_.name_it_settings.name_list["changed-name"] = "After Change"
+    customization.on_enabled(mod)
+    assert customization.get(mod, "keep-primary").name_target is None
+    assert customization.get(mod, "keep-sub").name_target == "sub"
+    assert customization.get(mod, "changed-name").name == "After Change"
+    assert customization.get(mod, "changed-name").name_target == "primary"
+    globals_.name_it_settings.replace_pattern_name = True
     assert globals_.enabled_cleanup_hooks.on_gear_deleted == "GearService"
     assert globals_.enabled_cleanup_hooks.on_character_deleted == "GearService"
 
@@ -756,6 +785,24 @@ def main() -> None:
     assert detached_input_widget.content.visible is False
     assert input_widget.content.visible is True
     assert input_widget.content.is_writing is True
+
+    # Grid cards rewrite widget display names (NBSP, crop, appended mark). The
+    # editor must pre-fill from the default name, never the mangled card text.
+    mangled_context = lua.table_from(
+        {
+            "gear_id": "gear-mangled",
+            "name": "Dueling Sword Mk IV...",
+            "default_name": "Dueling Sword Mk IV",
+            "widget": context.widget,
+        }
+    )
+    assert customization.show_name_editor(mod, mangled_context, lua.table_from({})) is True
+    assert input_widget.content.input_text == "Dueling Sword Mk IV"
+    # A saved name still wins over the default.
+    customization.update(mod, "gear-mangled", lua.table_from({"name": "Saved Name"}))
+    assert customization.show_name_editor(mod, mangled_context, lua.table_from({})) is True
+    assert input_widget.content.input_text == "Saved Name"
+    customization.remove(mod, "gear-mangled")
     assert [popup.options[index].text for index in range(1, 4)] == [
         "Confirm",
         "Reset to default",
@@ -894,6 +941,22 @@ def main() -> None:
     assert gear_service.character_delete_called is True
     assert customization.get(mod, "owned-by-deleted-character") is None
     assert customization.get(mod, "legacy-owned-by-deleted-character") is None
+
+    # BetterInventory cleanup failures must never block the native deletion
+    # (mod:hook is unprotected), nor throw out of the hook.
+    poisoned_gear_service = lua.table_from(
+        {
+            "_cached_gear_list": lua.eval(
+                "setmetatable({}, {__pairs = function() error('cache scan failed') end})"
+            )
+        }
+    )
+    globals_.captured_hooks.on_character_deleted(
+        lua.eval("function(service) service.character_delete_called = true end"),
+        poisoned_gear_service,
+        "deleted-character",
+    )
+    assert poisoned_gear_service.character_delete_called is True
 
     # A failed Name It read must never be converted into a partial replacement
     # map containing only the item BetterInventory just edited.

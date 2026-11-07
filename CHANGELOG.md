@@ -42,6 +42,10 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Curio buyer: leaving and re-entering Operative Selection while a purchase POST is in flight no longer clears its in-flight marker, and no new scan starts until the POST settles, so the same offer cannot be sent twice.
 - Curio buyer: when the Auto Crafter defers the buyer after the first purchase of a pass, the resumed pass now finishes the remaining candidates instead of skipping them as an already-consumed rotation.
 - Curio buyer: unset "buy stamina/wounds" now means off (matching the default) instead of buying; an unset target mode now means Characters instead of Classes, which could widen purchases to every enabled class.
+- Equipment persistence: the authoritative-profile refresh now installs a clone of the live profile (re-aliased to the preview loadout like native `_setup_inventory`) instead of the live profile itself, so native equip and mark-switch can no longer write unconfirmed items into the authoritative loadout; profile events carrying another character's profile (friend presence updates) are ignored.
+- Item names: the rename editor pre-fills with the saved or default item name instead of the grid card's rewritten text (non-breaking spaces, `...` crop, appended mark), and name normalization turns non-breaking spaces into plain spaces, so confirming no longer saves a mangled name.
+- Name It handoff: re-enabling BetterInventory's name ownership only retags names Name It actually changed; names it returned unchanged keep their existing sub/primary target instead of being re-tagged from Name It's global replace-pattern flag.
+- Item names: a failure in BetterInventory's character-deletion cleanup is now caught and logged, so it can no longer abort the native character deletion hook.
 
 ## 3.7.4 - Unreleased
 
