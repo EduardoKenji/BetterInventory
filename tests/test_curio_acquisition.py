@@ -366,7 +366,7 @@ def main() -> None:
         end
 
         TestModLoader = {
-            save_unsaved_settings_to_file = function() end,
+            save_unsaved_settings_to_file = function() saved_to_file_count = saved_to_file_count + 1 end,
             io_dofile = function(self, path)
                 if string.find(path, "BetterInventory_curio_domains", 1, true) then
                     return TestCurioDomains
@@ -407,9 +407,22 @@ def main() -> None:
             return localization_id
         end
 
+        function table.equals(a, b)
+            if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+            for k, v in pairs(a) do if not table.equals(v, b[k]) then return false end end
+            for k in pairs(b) do if a[k] == nil then return false end end
+            return true
+        end
+        saved_to_file_count = 0
+        user_setting_readback_broken = false
         Application = {
             time_since_launch = function()
                 return 100
+            end,
+            -- Models DMF's flushed settings file; settings is the in-memory store.
+            user_setting = function(root, name, key)
+                if user_setting_readback_broken then return nil end
+                return settings[key]
             end,
         }
 
@@ -450,6 +463,7 @@ def main() -> None:
 		setting_get_counts = {}
 		character_options_refresh_calls = 0
         test_mod = {
+            get_name = function() return "BetterInventory" end,
             get = function(self, setting_id)
 				setting_get_counts[setting_id] = (setting_get_counts[setting_id] or 0) + 1
                 return settings[setting_id]
@@ -888,6 +902,33 @@ def main() -> None:
     assert stamina_candidate.primary_value == 3
     globals_.settings.automatic_curio_buy_stamina = False
     globals_.health_item.traits[1].id = "health_trait"
+
+    # Unset settings (first load, harnesses) must follow the data.lua defaults.
+    # Stamina and wounds default off, so nil must not widen spending; health and
+    # toughness default on.
+    globals_.settings.automatic_curio_buy_stamina = None
+    globals_.settings.automatic_curio_buy_wounds = None
+    globals_.settings.automatic_curio_buy_health = None
+    globals_.settings.automatic_curio_buy_toughness = None
+    unset_filters = curio_store._test.curio_filter_snapshot(globals_.test_mod)
+    assert unset_filters.gadget_stamina_increase is None
+    assert unset_filters.gadget_innate_max_wounds_increase is None
+    assert unset_filters.gadget_innate_health_increase is not None
+    assert unset_filters.gadget_innate_toughness_increase is not None
+    globals_.settings.automatic_curio_buy_stamina = False
+    globals_.settings.automatic_curio_buy_wounds = False
+    globals_.settings.automatic_curio_buy_health = True
+    globals_.settings.automatic_curio_buy_toughness = True
+
+    # An unset target mode is Characters mode (the data.lua default), not classes.
+    globals_.settings.automatic_curio_target_mode = None
+    globals_.settings.automatic_curio_class_psyker = False
+    assert module._test.profile_is_enabled(
+        globals_.test_mod, globals_.target_profile
+    ) is True
+    assert module._test.profile_is_enabled(globals_.test_mod, lua.table_from({})) is False
+    globals_.settings.automatic_curio_class_psyker = True
+    globals_.settings.automatic_curio_target_mode = "classes"
 
     # Production snapshots all Curio eligibility settings once per pass. Offer
     # count and operative count must not multiply DMF setting reads.
@@ -1777,6 +1818,186 @@ def main() -> None:
     assert module.account_mutation_inflight() is False
     globals_.purchase_pending = False
     globals_.pending_purchase_promise = None
+
+    # B4: the once-per-rotation boundary is flushed to disk (and read back)
+    # before the purchase POST, so a crash right after buying cannot allow a
+    # second purchase in the same rotation.
+    module.cancel()
+    globals_.main_menu_active = False
+    globals_.settings.automatic_curio_scan_operative_selection = False
+    globals_.settings.automatic_curio_once_per_store_rotation = True
+    globals_.settings.automatic_curio_rescan_on_store_refresh = False
+    globals_.settings.automatic_curio_buy_health = True
+    globals_.settings.automatic_curio_buy_toughness = False
+    globals_.purchase_pending = False
+    globals_.wallet_balance = 100000
+    globals_.health_item.traits[1].id = "health_trait"
+    globals_.health_item.traits[1].value = 21
+    last_boundary = globals_.settings["_automatic_curio_rotation_history"].accounts[
+        "test-account"
+    ].next_refresh_at_ms
+    next_boundary = last_boundary + 3600000
+    set_storefront_boundary(next_boundary)
+    globals_.server_clock = last_boundary + 5000
+    globals_.test_offer.offerId = "persist-boundary-health"
+    globals_.revalidated_offer.offerId = "persist-boundary-health"
+    purchases_before_persist = globals_.purchase_count
+    lua.execute(
+        """
+        saved_when_posted = nil
+        purchase_hook = function()
+            purchase_hook = nil
+            saved_when_posted = saved_to_file_count
+        end
+        """
+    )
+    saves_before_persist = globals_.saved_to_file_count
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_persist + 1
+    assert globals_.saved_when_posted == saves_before_persist + 1
+    module.cancel()
+
+    # If the boundary cannot be saved and read back, the buyer fails closed and
+    # sends no POST for that rotation.
+    last_boundary = next_boundary
+    set_storefront_boundary(last_boundary + 3600000)
+    globals_.server_clock = last_boundary + 5000
+    globals_.test_offer.offerId = "unsaved-boundary-health"
+    globals_.revalidated_offer.offerId = "unsaved-boundary-health"
+    globals_.user_setting_readback_broken = True
+    purchases_before_unsaved = globals_.purchase_count
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_unsaved
+    assert module.is_busy() is False
+    globals_.user_setting_readback_broken = False
+    module.cancel()
+
+    # B17: a persistent store-rotation mismatch gives up after a bounded number
+    # of waits instead of refetching every profile and storefront all session.
+    stale_boundary = globals_.settings["_automatic_curio_rotation_history"].accounts[
+        "test-account"
+    ].next_refresh_at_ms
+    globals_.server_clock = stale_boundary + 5000
+    globals_.test_offer.offerId = "stuck-rotation-health"
+    globals_.revalidated_offer.offerId = "stuck-rotation-health"
+    lua.execute(
+        """
+        stuck_storefront = {
+            data = {
+                currentRotationEnd = %d,
+                catalog = {validTo = %d},
+                personal = {test_offer},
+            },
+        }
+        storefront_hook = function() return stuck_storefront end
+        """
+        % (stale_boundary, stale_boundary)
+    )
+    purchases_before_stuck = globals_.purchase_count
+    fetches_before_stuck = globals_.fetched_store_count
+    module.begin_morningstar_pass(globals_.test_mod)
+    for _ in range(60):
+        module.update(globals_.test_mod, 10, False)
+    assert globals_.purchase_count == purchases_before_stuck
+    assert 1 <= globals_.fetched_store_count - fetches_before_stuck <= 6
+    assert module.is_busy() is False
+    fetches_after_stuck = globals_.fetched_store_count
+    module.update(globals_.test_mod, 600, False)
+    assert globals_.fetched_store_count == fetches_after_stuck
+
+    # The next context entry starts a fresh bounded sequence and can buy once the
+    # backend publishes the new rotation.
+    globals_.storefront_hook = None
+    set_storefront_boundary(stale_boundary + 3600000)
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_stuck + 1
+    module.cancel()
+
+    # B5: leaving and re-entering Operative Selection while a purchase POST is
+    # still in flight must not wipe its marker and send the same offer again.
+    globals_.settings.automatic_curio_once_per_store_rotation = False
+    globals_.settings.automatic_curio_scan_operative_selection = True
+    globals_.main_menu_active = True
+    globals_.purchase_pending = True
+    globals_.test_offer.offerId = "reentry-inflight-health"
+    globals_.revalidated_offer.offerId = "reentry-inflight-health"
+    purchases_before_reentry = globals_.purchase_count
+    module.enter_operative_selection(globals_.test_mod)
+    module.update(globals_.test_mod, 1, False)
+    assert globals_.purchase_count == purchases_before_reentry + 1
+    inflight_promise = globals_.pending_purchase_promise
+    module.leave_operative_selection()
+    module.enter_operative_selection(globals_.test_mod)
+    for _ in range(3):
+        module.update(globals_.test_mod, 1, False)
+    assert globals_.purchase_count == purchases_before_reentry + 1
+    inflight_promise.resolve(inflight_promise, lua.table_from({"items": lua.table_from([])}))
+    globals_.purchase_pending = False
+    globals_.pending_purchase_promise = None
+    module.cancel()
+    globals_.main_menu_active = False
+    globals_.settings.automatic_curio_scan_operative_selection = False
+
+    # B14: when Auto Crafter defers the buyer after the first purchase of a pass,
+    # the consumed rotation must not drop the remaining candidates; the resumed
+    # pass buys them (already bought offers stay blocked).
+    globals_.settings.automatic_curio_once_per_store_rotation = True
+    boundary_before_defer = globals_.settings["_automatic_curio_rotation_history"].accounts[
+        "test-account"
+    ].next_refresh_at_ms
+    defer_boundary = boundary_before_defer + 3600000
+    set_storefront_boundary(defer_boundary)
+    globals_.server_clock = boundary_before_defer + 5000
+    globals_.buyer_module = module
+    lua.execute(
+        """
+        local function offer(id)
+            return {
+                offerId = id,
+                state = "active",
+                sku = {category = "item_instance"},
+                description = {gear_id = "gear-" .. id, item = health_item},
+                price = {
+                    amount = {amount = 25000, type = "credits"},
+                    validTo = %d,
+                },
+            }
+        end
+        two_offer_storefront = {
+            data = {
+                currentRotationEnd = %d,
+                catalog = {validTo = %d},
+                personal = {offer("deferred-offer-a"), offer("deferred-offer-b")},
+            },
+        }
+        storefront_hook = function() return two_offer_storefront end
+        local calls = 0
+        local function defer_on_second_wallet()
+            calls = calls + 1
+            if calls == 2 then
+                assert(buyer_module.defer_for_account_operation(test_mod) == true)
+            else
+                wallet_hook = defer_on_second_wallet
+            end
+        end
+        wallet_hook = defer_on_second_wallet
+        """
+        % (defer_boundary, defer_boundary, defer_boundary)
+    )
+    purchases_before_defer = globals_.purchase_count
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_defer + 1
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_defer + 2
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_defer + 2
+    globals_.storefront_hook = None
+    globals_.wallet_hook = None
+    module.cancel()
 
     # Disabled, settled buyer becomes fully dormant. Enabling remains enough
     # to wake it without relying on a prior lifecycle callback.

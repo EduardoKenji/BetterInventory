@@ -37,6 +37,11 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Auto Crafter: pure mastery/cost GETs are dispatched read-only, so a hung one fails at 15 s instead of the 45 s quarantine.
 - Auto Crafter: a stable character identity no longer reports a `character_context_unavailable` reason.
 - Auto Crafter: invalidate the native wallet cache before each probe/runtime refresh. Expertise, perk and blessing crafting never debited the cached wallet, so later material checks could over-report and the backend reject mid-run.
+- Curio buyer: the once-per-rotation boundary is now flushed to disk and read back before the first purchase POST; if it cannot be saved the pass sends nothing. Previously a crash right after a purchase lost the boundary and the next launch could buy again in the same rotation.
+- Curio buyer: a pending store-rotation mismatch now gives up after 6 backed-off waits instead of refetching every profile and storefront every 1-5 s for the whole session; it retries on the next context entry and never consumes the rotation.
+- Curio buyer: leaving and re-entering Operative Selection while a purchase POST is in flight no longer clears its in-flight marker, and no new scan starts until the POST settles, so the same offer cannot be sent twice.
+- Curio buyer: when the Auto Crafter defers the buyer after the first purchase of a pass, the resumed pass now finishes the remaining candidates instead of skipping them as an already-consumed rotation.
+- Curio buyer: unset "buy stamina/wounds" now means off (matching the default) instead of buying; an unset target mode now means Characters instead of Classes, which could widen purchases to every enabled class.
 
 ## 3.7.4 - Unreleased
 

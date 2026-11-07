@@ -635,7 +635,7 @@ local function cache_profiles(mod, profiles)
 	-- A response with no usable character IDs yields no Characters-mode targets,
 	-- so nothing is bought this pass. Never persist a mode change from it: a
 	-- transient empty reply must not widen spending to every enabled class.
-	if #summaries == 0 and mod:get("automatic_curio_target_mode") == "characters" then
+	if #summaries == 0 and (mod:get("automatic_curio_target_mode") or "characters") == "characters" then
 		log_info(mod, "No usable characters were returned; Character targeting buys nothing this pass.")
 	end
 
@@ -667,7 +667,7 @@ local function character_is_enabled(mod, character_id)
 end
 
 local function profile_is_enabled(mod, profile)
-	if mod:get("automatic_curio_target_mode") == "characters" then
+	if (mod:get("automatic_curio_target_mode") or "characters") == "characters" then
 		return profile and profile.character_id and character_is_enabled(mod, profile.character_id) or false
 	end
 
@@ -679,6 +679,7 @@ local function profiles_service()
 end
 
 local function update_profile_discovery(mod, dt)
+	-- Intentionally fail-closed (== true): an unset value must not enable automatic spending, unlike the data.lua default.
 	if not is_morningstar() and not (is_operative_selection() and mod:get("automatic_curio_scan_operative_selection") == true) then
 		return
 	end

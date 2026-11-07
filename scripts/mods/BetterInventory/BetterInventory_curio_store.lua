@@ -110,6 +110,7 @@ local PRIMARY_TRAITS = {
 		minimum_roll_default = 21,
 		minimum_roll_setting_id = "automatic_curio_min_health",
 		setting_id = "automatic_curio_buy_health",
+		default_enabled = true,
 		label_id = "automatic_curio_health",
 		unit = "%",
 	},
@@ -119,6 +120,7 @@ local PRIMARY_TRAITS = {
 		minimum_roll_default = 17,
 		minimum_roll_setting_id = "automatic_curio_min_toughness",
 		setting_id = "automatic_curio_buy_toughness",
+		default_enabled = true,
 		label_id = "automatic_curio_toughness",
 		unit = "%",
 	},
@@ -126,6 +128,7 @@ local PRIMARY_TRAITS = {
 		color_default = {190, 105, 230},
 		color_prefix = "curio_wound_color",
 		setting_id = "automatic_curio_buy_wounds",
+		default_enabled = false,
 		label_id = "automatic_curio_wounds",
 		unit = "",
 	},
@@ -135,6 +138,7 @@ local PRIMARY_TRAITS = {
 		minimum_roll_default = 3,
 		minimum_roll_setting_id = "automatic_curio_min_stamina",
 		setting_id = "automatic_curio_buy_stamina",
+		default_enabled = false,
 		label_id = "automatic_curio_stamina",
 		unit = "",
 	},
@@ -178,7 +182,13 @@ local function curio_filter_snapshot(mod)
 	}
 
 	for trait_name, config in pairs(PRIMARY_TRAITS) do
-		if mod:get(config.setting_id) ~= false then
+		local buy = mod:get(config.setting_id)
+
+		if buy == nil then
+			buy = config.default_enabled -- must match BetterInventory_data.lua; nil must not widen spending
+		end
+
+		if buy ~= false then
 			filters[trait_name] = config.minimum_roll_setting_id and math.clamp(tonumber(mod:get(config.minimum_roll_setting_id)) or config.minimum_roll_default, 0, 100) or true
 		end
 	end
