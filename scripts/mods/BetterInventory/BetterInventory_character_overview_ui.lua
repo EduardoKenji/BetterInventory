@@ -554,7 +554,7 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 	configure_character_overview_rarity_strip(blueprint, rarity_strip_setting_id)
 	configure_character_overview_weapon_passes(blueprint)
 	local rating = pass_by_style_id(blueprint.pass_template, "better_inventory_weapon_rarity_rating")
-	if rating and mod:get("character_overview_weapon_rarity_rating_mode") == "overview_vertical" then
+	if rating and (mod:get("character_overview_weapon_rarity_rating_mode") or "overview_vertical") == "overview_vertical" then
 		rating.style.offset = { 8, 7, 31 }
 		rating.style.size = { 22, 112 }
 		rating.style.font_size = 16
@@ -723,7 +723,7 @@ local function character_overview_curio_blueprint()
 	end
 
 	local blueprint = table.clone(detailed_blueprint)
-	local native_curio_overlay_enabled = mod:get("character_overview_use_native_curio_overlay") == true
+	local native_curio_overlay_enabled = mod:get("character_overview_use_native_curio_overlay") ~= false
 	blueprint.size = table.clone(native_blueprint.size or {
 		193,
 		250,
@@ -748,7 +748,7 @@ local function character_overview_curio_blueprint()
 	configure_character_overview_rarity_strip(blueprint, "character_overview_show_curio_rarity_strip")
 
 	local curio_font_scale = math.max(50, math.min(150, tonumber(mod:get("character_overview_curio_font_size_percent")) or 110)) / 100
-	local curio_name_mode = mod:get("character_overview_curio_name_mode")
+	local curio_name_mode = mod:get("character_overview_curio_name_mode") or "two_lines"
 
 	if mod:get("name_it_force_curio_name_in_detailed_mode") ~= false then
 		curio_name_mode = "two_lines"
@@ -1315,7 +1315,7 @@ local function character_overview_native_curio_equipped_marker_y(widget)
 	local native_overlay_enabled = content and content.better_inventory_native_curio_overlay_enabled
 
 	if native_overlay_enabled == nil then
-		native_overlay_enabled = mod:get("character_overview_use_native_curio_overlay") == true
+		native_overlay_enabled = mod:get("character_overview_use_native_curio_overlay") ~= false
 	end
 
 	-- Character Overview Curios are the only widgets whose slot names use this
