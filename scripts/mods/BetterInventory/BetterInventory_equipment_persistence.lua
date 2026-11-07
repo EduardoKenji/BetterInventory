@@ -509,7 +509,7 @@ EquipmentPersistence.update = function(mod, dt)
 	observe_promise(mod, operation, promise)
 end
 
-EquipmentPersistence.refresh_from_authoritative_profile = function(view, peer_id, local_player_id)
+EquipmentPersistence.refresh_from_authoritative_profile = function(view, peer_id, local_player_id, event_profile)
 	if type(view) ~= "table" or view._destroyed or view._is_own_player == false then
 		return false
 	end
@@ -531,6 +531,14 @@ EquipmentPersistence.refresh_from_authoritative_profile = function(view, peer_id
 	local current_id = current_character_id()
 
 	if character_id == nil or current_id == nil or character_id ~= current_id then
+		return false
+	end
+
+	-- Presence events fire (nil, nil, friend_profile); another character's
+	-- profile is never ours to refresh from.
+	local event_character_id = profile_character_id(event_profile)
+
+	if event_character_id ~= nil and event_character_id ~= current_id then
 		return false
 	end
 
@@ -564,9 +572,23 @@ EquipmentPersistence.refresh_from_authoritative_profile = function(view, peer_id
 		return false
 	end
 
-	view._presentation_profile = profile
+	-- Native clones the live profile; assigning it directly would let equip and
+	-- mark-switch write unconfirmed items into the authoritative loadout.
+	local clone_ok, clone = pcall(table.clone_instance, profile)
+
+	if not clone_ok or type(clone) ~= "table" then
+		return false
+	end
+
+	view._presentation_profile = clone
 
 	local update_ok = pcall(view._update_equipped_items, view)
+
+	-- Re-alias after the update (it diffs clone.loadout against the preview), as
+	-- InventoryBackgroundView._setup_inventory does.
+	if type(view._preview_profile_equipped_items) == "table" then
+		clone.loadout = view._preview_profile_equipped_items
+	end
 
 	return update_ok
 end

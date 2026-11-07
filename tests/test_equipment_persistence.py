@@ -120,6 +120,17 @@ def main() -> None:
             end,
         }
 
+        table.clone_instance = function(t, seen)
+            seen = seen or {}
+            if seen[t] then return seen[t] end
+            local copy = {}
+            seen[t] = copy
+            for k, v in pairs(t) do
+                copy[k] = type(v) == "table" and table.clone_instance(v, seen) or v
+            end
+            return setmetatable(copy, getmetatable(t))
+        end
+
         retry_results = {}
         retry_calls = 0
         retried_items = nil
@@ -305,6 +316,28 @@ def main() -> None:
     assert module.refresh_from_authoritative_profile(globals_.view) is True
     assert globals_.view._presentation_profile.marker == "authoritative"
     assert globals_.view_update_count == 1
+
+    # The refreshed presentation profile must be a clone aliased to the preview
+    # loadout (as native _setup_inventory does), never the live profile, or
+    # native equip/mark-switch would write unconfirmed items into it.
+    assert lua.eval("view._presentation_profile ~= authoritative_profile")
+    assert lua.eval("view._presentation_profile.loadout == view._preview_profile_equipped_items")
+    globals_.view._presentation_profile.loadout.slot_primary = globals_.new_weapon
+    assert globals_.authoritative_profile.loadout.slot_primary is None
+
+    # Presence events fire (nil, nil, other_character_profile); ignore them,
+    # while own-character and profile-less events keep native behaviour.
+    update_count = globals_.view_update_count
+    friend_profile = lua.table_from({"character_id": "character-friend"})
+    own_profile = lua.table_from({"character_id": "character-a"})
+    assert (
+        module.refresh_from_authoritative_profile(globals_.view, None, None, friend_profile)
+        is False
+    )
+    assert globals_.view_update_count == update_count
+    assert module.refresh_from_authoritative_profile(globals_.view, None, None, own_profile) is True
+    assert module.refresh_from_authoritative_profile(globals_.view, None, None, None) is True
+    assert globals_.view_update_count == update_count + 2
 
     # A retry from another character/account generation must become inert.
     globals_.view._starting_profile_equipped_items.slot_primary = globals_.old_weapon
