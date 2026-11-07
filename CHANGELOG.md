@@ -1,8 +1,8 @@
 # BetterInventory changelog
 
-## 3.8.0 - Unreleased
+## 3.9.0 - Unreleased
 
-Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46b8926c`, 1.13.0 → 1.13.4).
+Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46b8926c`, 1.13.0 → 1.13.4), plus the 3.8.0 file-by-file audit fixes (see docs/v3.8.0-file-by-file-audit.md). Version 3.8.0 was never released; its changes ship here.
 
 - Keep Character Overview weapon names clear of the left edge and vertical rarity/stars when weapon perk text is hidden (Nexus report: loudeman).
 - Evenly space Character Overview blessing names and rank symbols between the weapon name and card bottom when weapon perk text is hidden.
