@@ -270,17 +270,21 @@
     {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 326}
   ],
   "test_layout.py": [
-        {"name": "card_geometry", "risk": "high", "start_line": 617, "end_line": 1542},
-          {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1543, "end_line": 2016},
-            {"name": "content_and_resource_ownership", "risk": "high", "start_line": 2017, "end_line": 3228},
-        {"name": "integration_boundaries", "risk": "medium", "start_line": 3229, "end_line": 5544},
-        {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5545, "end_line": 5792},
-    {"name": "blessing_wrap_height_and_cruncher_rebind", "risk": "high", "start_line": 5793, "end_line": 5844}
+    {"name": "card_geometry", "risk": "high", "start_line": 617, "end_line": 1542},
+    {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1543, "end_line": 2016},
+    {"name": "content_and_resource_ownership", "risk": "high", "start_line": 2017, "end_line": 3228},
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3229, "end_line": 5544},
+    {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5545, "end_line": 5792},
+    {"name": "blessing_wrap_height_and_cruncher_rebind", "risk": "high", "start_line": 5793, "end_line": 5839},
+    {"name": "native_global_store_card_geometry", "risk": "critical", "start_line": 5840, "end_line": 5855}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
     {"name": "terminal_release_once", "risk": "critical", "start_line": 35, "end_line": 71},
     {"name": "cancel_and_reconcile", "risk": "critical", "start_line": 72, "end_line": 76}
+  ],
+  "test_panel_blueprints.py": [
+    {"name": "row_variant_templates_and_grid_interaction_passes", "risk": "high", "start_line": 1, "end_line": 168}
   ],
   "test_profile_spawner_compatibility.py": [
     {"name": "destroyed_spawner_reuse_reinitializes_loader", "risk": "critical", "start_line": 1, "end_line": 119}
