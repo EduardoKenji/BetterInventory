@@ -2122,7 +2122,7 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	local configuration = scoped_configuration
 
 	if not configuration and is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
-		configuration = mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_grid") ~= false and table.clone(GLOBAL_STORE_GRID_CONFIGURATION) or GLOBAL_STORE_NATIVE_CONFIGURATION
+		configuration = mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_grid") ~= false and table.clone(GLOBAL_STORE_GRID_CONFIGURATION) or table.clone(GLOBAL_STORE_NATIVE_CONFIGURATION)
 
 		if configuration.store_item and Layout.store_slot_kind then
 			configuration.slot_kind = Layout.store_slot_kind(view, layout)

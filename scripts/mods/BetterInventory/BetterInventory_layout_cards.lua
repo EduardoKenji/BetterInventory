@@ -1558,7 +1558,12 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 		local full_name = content.better_inventory_name_it_curio_full_name or title_text
 		local maximum_width = title_style.size and title_style.size[1]
 		local maximum_lines = 2
-		local minimum_title_font_size = math.min(title_style.font_size or 16, 12)
+		-- The loop below only shrinks; restore the preferred size so a refit after
+		-- a rename (or a shorter name) is not stuck at the previous shrunk size.
+		title_style.better_inventory_preferred_font_size = title_style.better_inventory_preferred_font_size or title_style.font_size or 16
+		title_style.font_size = title_style.better_inventory_preferred_font_size
+
+		local minimum_title_font_size = math.min(title_style.font_size, 12)
 
 		if type(maximum_width) ~= "number" then
 			return
@@ -1933,6 +1938,12 @@ local function configure_card_content(mod, item_blueprint, configuration)
 	-- without any reset; its scope now includes supported secondary Curio perks.
 	local simplify_curio_stats = setting(mod, "simplify_curio_primary_stat_text", true)
 
+	local name_fit = {
+		preferred_font_size = preferred_font_size,
+		minimum_font_size = math.min(preferred_font_size, minimum_font_size),
+		force_single_line = force_weapon_name_single_line,
+	}
+
 	local function fit_overview_rating(parent, widget, ui_renderer)
 		if not configuration.character_overview then return end
 		ui_renderer = ui_renderer or grid_ui_renderer(parent)
@@ -1972,6 +1983,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format, configuration)
 			if configuration.character_overview then apply_character_overview_blessing_name_mode(mod, widget) end
 			fit_overview_rating(parent, widget, ui_renderer)
+			widget.content.better_inventory_name_fit = name_fit
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size), force_weapon_name_single_line)
 			fit_blessing_text(parent, widget, ui_renderer)
 			fit_weapon_perks(parent, widget, ui_renderer)
@@ -1993,6 +2005,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format, configuration)
 			if configuration.character_overview then apply_character_overview_blessing_name_mode(mod, widget) end
 			fit_overview_rating(parent, widget)
+			widget.content.better_inventory_name_fit = name_fit
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size), force_weapon_name_single_line)
 			fit_blessing_text(parent, widget, nil)
 			fit_weapon_perks(parent, widget, nil)
@@ -2012,6 +2025,14 @@ local function configure_card_content(mod, item_blueprint, configuration)
 
 end
 
+-- Re-fit a widget's name after a rename/recolor rewrote content.display_name.
+Cards.refit_item_name = function(parent, widget, ui_renderer)
+	local fit = widget and widget.content and widget.content.better_inventory_name_fit
+
+	if fit then
+		fit_display_name(parent, widget, ui_renderer, fit.preferred_font_size, fit.minimum_font_size, fit.force_single_line)
+	end
+end
 Cards.configure_native_quick_look_card_passes = configure_native_quick_look_card_passes
 Cards.weapon_kill_counter_card_height_padding = WeaponKillCounter.compact_card_height_padding
 Cards.remove_weapon_stats_wkc_listing_overlays = WeaponKillCounter.remove_weapon_stats_listing_overlays

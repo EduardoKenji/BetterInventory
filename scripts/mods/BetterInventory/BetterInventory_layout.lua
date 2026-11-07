@@ -43,7 +43,15 @@ Layout.synchronize_rarity_tag_color = content.synchronize_rarity_tag_color
 Layout.apply_item_customization_style = content.apply_item_customization_style
 Layout.restore_item_customization_style = content.restore_item_customization_style
 Layout.apply_weapon_information_customization = content.apply_weapon_information_customization
-Layout.refresh_item_customization = content.refresh_item_customization
+Layout.refresh_item_customization = function(mod, widget, element, parent, ui_renderer)
+	local refreshed = content.refresh_item_customization(mod, widget, element)
+
+	if refreshed then
+		Cards.refit_item_name(parent, widget, ui_renderer)
+	end
+
+	return refreshed
+end
 Layout.reapply_tracked_item_customization_style = content.reapply_tracked_item_customization_style
 Layout.invalidate_item_customization_tracking = content.invalidate_item_customization_tracking
 

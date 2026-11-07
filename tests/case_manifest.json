@@ -258,7 +258,7 @@
   "test_item_customization.py": [
     {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 451},
     {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 452, "end_line": 811},
-    {"name": "callback_failure_safety", "risk": "high", "start_line": 812, "end_line": 1066}
+    {"name": "callback_failure_safety", "risk": "high", "start_line": 812, "end_line": 1074}
   ],
   "test_material_safety.py": [
     {"name": "dynamic_material_repair", "risk": "critical", "start_line": 1, "end_line": 365}
@@ -273,10 +273,10 @@
     {"name": "card_geometry", "risk": "high", "start_line": 617, "end_line": 1542},
     {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1543, "end_line": 2016},
     {"name": "content_and_resource_ownership", "risk": "high", "start_line": 2017, "end_line": 3244},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3245, "end_line": 5584},
-    {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5585, "end_line": 5861},
-    {"name": "blessing_wrap_height_and_cruncher_rebind", "risk": "high", "start_line": 5862, "end_line": 5908},
-    {"name": "native_global_store_card_geometry", "risk": "critical", "start_line": 5909, "end_line": 5924}
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3245, "end_line": 5594},
+    {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5595, "end_line": 5871},
+    {"name": "blessing_wrap_height_and_cruncher_rebind", "risk": "high", "start_line": 5872, "end_line": 5923},
+    {"name": "native_global_store_card_geometry", "risk": "critical", "start_line": 5924, "end_line": 6031}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
@@ -311,9 +311,9 @@
   "test_view_lifecycle_memory.py": [
     {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 26, "end_line": 99},
     {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 100, "end_line": 111},
-    {"name": "shared_grid_exact_pass_through", "risk": "critical", "start_line": 112, "end_line": 140},
-    {"name": "quick_level_probe_throttle", "risk": "high", "start_line": 141, "end_line": 147},
-    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 148, "end_line": 164}
+    {"name": "shared_grid_exact_pass_through", "risk": "critical", "start_line": 112, "end_line": 143},
+    {"name": "quick_level_probe_throttle", "risk": "high", "start_line": 144, "end_line": 150},
+    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 151, "end_line": 167}
   ],
   "test_v370_boundaries.py": [
     {"name": "real_facade_returns_and_cleanup_fault_isolation", "risk": "critical", "start_line": 1, "end_line": 65},

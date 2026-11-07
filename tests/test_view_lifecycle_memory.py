@@ -125,6 +125,9 @@ def main() -> None:
     assert 'return "enable_melk_multi_operative_grid", true' in overview
     assert 'local GLOBAL_STORE_MELK_SERVICE = "get_all_characters_marks_store_custom"' in overview
     assert "optional_store_service(view, context) == GLOBAL_STORE_MELK_SERVICE" in overview
+    # The shared native GlobalStore configuration constant is never handed out
+    # (or written into): each present clones it.
+    assert "or table.clone(GLOBAL_STORE_NATIVE_CONFIGURATION)" in runtime
 
     # GlobalStore tab changes rebuild the main grid and otherwise strand its
     # asynchronous portrait callbacks. Retirement must use one stable callback

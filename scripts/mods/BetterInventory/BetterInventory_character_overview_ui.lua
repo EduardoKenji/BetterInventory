@@ -651,6 +651,11 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 		-- Character Overview frame; that nested call was charged to BetterInventory
 		-- and scaled badly on slower/high-cardinality inventory sessions.
 		if not item_changed then
+			-- Track a same-revision replacement object so the == fast path applies.
+			if content and current_item ~= nil then
+				content.item = current_item
+			end
+
 			return
 		end
 
@@ -660,6 +665,12 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 
 		if type(native_update) == "function" then
 			native_update(parent, widget, input_service, dt, t, ui_renderer)
+		end
+
+		-- Native update ignores a same-gear_id revision, so record the rendered
+		-- item here; otherwise the revision comparison reruns every frame.
+		if content then
+			content.item = current_item
 		end
 
 		mark_character_overview_requirement_met(widget)
@@ -1237,6 +1248,11 @@ local function character_overview_curio_blueprint()
 		end
 
 		if not item_changed then
+			-- Track a same-revision replacement object so the == fast path applies.
+			if content and current_item ~= nil then
+				content.item = current_item
+			end
+
 			-- `init` can run before Darktide supplies a usable renderer. Retry the
 			-- bounded fit once from update; after initialization this remains the
 			-- unchanged-item fast path and performs no recurring text measurement.
@@ -1255,6 +1271,11 @@ local function character_overview_curio_blueprint()
 
 		if type(native_update) == "function" then
 			native_update(parent, widget, input_service, dt, t, ui_renderer)
+		end
+
+		-- See the weapon blueprint: native update skips a same-gear_id revision.
+		if content then
+			content.item = current_item
 		end
 
 		mark_character_overview_requirement_met(widget)

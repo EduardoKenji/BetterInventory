@@ -110,7 +110,7 @@ local function refresh_item(mod, layout, context, refresh_name)
 	end
 
 	if layout and type(layout.refresh_item_customization) == "function" then
-		layout.refresh_item_customization(mod, context.widget, context.widget and context.widget.content and context.widget.content.element)
+		layout.refresh_item_customization(mod, context.widget, context.widget and context.widget.content and context.widget.content.element, context.view)
 	elseif layout and type(layout.apply_item_customization_style) == "function" then
 		layout.apply_item_customization_style(mod, context.widget, context.widget and context.widget.content and context.widget.content.element)
 	end
@@ -129,9 +129,21 @@ local function refresh_item(mod, layout, context, refresh_name)
 
 			if item and item.gear_id == context.gear_id then
 				local element = widget.content and widget.content.element
+				local overview_content = widget.content
+				local is_curio = item.item_type == "GADGET"
+
+				-- The overview Curio fitter keeps the old name's fit state and skips
+				-- unchanged widgets; clear it so the next update refits the new name.
+				if overview_content and is_curio then
+					overview_content.better_inventory_curio_fit_initialized = nil
+					overview_content.better_inventory_curio_fit_name_source = nil
+					overview_content.better_inventory_fitted_curio_name = nil
+					overview_content.better_inventory_full_display_name = nil
+				end
 
 				if type(layout.refresh_item_customization) == "function" then
-					layout.refresh_item_customization(mod, widget, element)
+					-- Overview Curios refit through their own fitter on the next update.
+					layout.refresh_item_customization(mod, widget, element, not is_curio and overview or nil)
 				elseif type(layout.apply_item_customization_style) == "function" then
 					layout.apply_item_customization_style(mod, widget, element)
 				end
