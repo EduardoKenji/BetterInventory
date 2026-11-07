@@ -27,11 +27,11 @@
     {"name": "purchase_source_isolation_and_myfavorites_color_assignment", "risk": "high", "start_line": 1, "end_line": 329}
   ],
   "test_weapon_kill_counter_integration.py": [
-    {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 551},
-    {"name": "single_pass_resolution_and_layout_generation_invalidation", "risk": "high", "start_line": 552, "end_line": 594}
+    {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 549},
+    {"name": "single_pass_resolution_and_layout_generation_invalidation", "risk": "high", "start_line": 550, "end_line": 592}
   ],
   "test_rarity_rating.py": [
-    {"name": "two_profiles_split_tiers_mixed_melk_and_live_color_updates", "risk": "high", "start_line": 1, "end_line": 372}
+    {"name": "two_profiles_split_tiers_mixed_melk_and_live_color_updates", "risk": "high", "start_line": 1, "end_line": 385}
   ],
   "test_coverage_support.py": [
     {"name": "multiple_lua_runtimes_merge_without_overwriting_earlier_coverage", "risk": "high", "start_line": 1, "end_line": 21}
@@ -250,10 +250,10 @@
   ],
   "test_features.py": [
     {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-    {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1616},
-    {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1617, "end_line": 2119},
-    {"name": "panel_lifecycle", "risk": "high", "start_line": 2120, "end_line": 3459},
-    {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3460, "end_line": 4002}
+    {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1651},
+    {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1652, "end_line": 2154},
+    {"name": "panel_lifecycle", "risk": "high", "start_line": 2155, "end_line": 3524},
+    {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3525, "end_line": 4067}
   ],
   "test_item_customization.py": [
     {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 451},
@@ -272,11 +272,11 @@
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 617, "end_line": 1542},
     {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1543, "end_line": 2016},
-    {"name": "content_and_resource_ownership", "risk": "high", "start_line": 2017, "end_line": 3228},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3229, "end_line": 5544},
-    {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5545, "end_line": 5792},
-    {"name": "blessing_wrap_height_and_cruncher_rebind", "risk": "high", "start_line": 5793, "end_line": 5839},
-    {"name": "native_global_store_card_geometry", "risk": "critical", "start_line": 5840, "end_line": 5855}
+    {"name": "content_and_resource_ownership", "risk": "high", "start_line": 2017, "end_line": 3244},
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3245, "end_line": 5584},
+    {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5585, "end_line": 5861},
+    {"name": "blessing_wrap_height_and_cruncher_rebind", "risk": "high", "start_line": 5862, "end_line": 5908},
+    {"name": "native_global_store_card_geometry", "risk": "critical", "start_line": 5909, "end_line": 5924}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
@@ -294,8 +294,8 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 472, "end_line": 615},
     {"name": "character_overview_transition_retirement", "risk": "critical", "start_line": 616, "end_line": 651},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 652, "end_line": 1872},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1873, "end_line": 3095},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3096, "end_line": 4105}
+    {"name": "localization_contract", "risk": "medium", "start_line": 1873, "end_line": 3128},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3129, "end_line": 4138}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},
@@ -331,5 +331,8 @@
   ],
   "test_curio_consecration.py": [
     {"name": "persistent_fifo_consecration_and_native_write_boundaries", "risk": "critical", "start_line": 1, "end_line": 207}
+  ],
+  "test_default_drift_guard.py": [
+    {"name": "literal_id_fallbacks_match_data_lua_defaults", "risk": "high", "start_line": 1, "end_line": 100}
   ]
 }
