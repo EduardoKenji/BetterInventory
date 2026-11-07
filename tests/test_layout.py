@@ -5837,6 +5837,22 @@ def main() -> None:
     assert widget.content.better_inventory_blessing_text_2.endswith("...")
     assert styles["better_inventory_blessing_text_2"].font_size == 8
     assert styles["better_inventory_blessing_text_2"].word_wrap is False
+    # Native GlobalStore cards re-anchor the icon, price, wallet, portrait and
+    # character rows to the store footer.
+    store_card = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    store_card.size[1] = 600
+    layout.configure_native_item_blueprint(mod, store_card, 600, lua.table_from({
+        "maximum_columns": 5, "store_item": True, "global_store": True,
+    }))
+    assert blueprint_pass(store_card, "icon").style.horizontal_alignment == "right"
+    assert blueprint_pass(store_card, "display_name").style.text_vertical_alignment == "top"
+    assert blueprint_pass(store_card, "portrait").style.vertical_alignment == "bottom"
+    assert blueprint_pass(store_card, "character_info_text").style.word_wrap is False
+    assert blueprint_pass(store_card, "character_class_icon_text").style.horizontal_alignment == "left"
+    assert blueprint_pass(store_card, "wallet_icon").style.size[1] == 22
+    assert blueprint_pass(store_card, "price_text").style.offset[1] == 39
+    assert blueprint_pass(store_card, "owned_text").style.size[2] == 24
+    assert blueprint_pass(store_card, "item_level").style.vertical_alignment == "bottom"
     print("BetterInventory layout behavior tests passed.")
 
 
