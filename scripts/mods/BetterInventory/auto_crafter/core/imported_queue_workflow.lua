@@ -52,7 +52,6 @@ function ImportedQueueWorkflow.install(self, services)
 		self._catalog = job.catalog
 		self._catalog_key = offer_key(job.offer)
 		self._selected_target_key = nil
-		self._selected_native_key = offer_key(job.offer)
 		self:_refresh_plan("games_lantern_job_staged")
 
 		return true

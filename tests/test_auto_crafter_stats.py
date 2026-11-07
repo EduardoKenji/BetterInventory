@@ -1380,7 +1380,23 @@ def main() -> None:
             )
         }
     )
+    # P1: the option lists are built once per (catalog table, kind), not per frame.
+    lua.execute("CompactCalls = 0")
+    trait_panel._compact_perk_label = lua.eval("function(entry, label) CompactCalls = CompactCalls + 1 return label end")
     perk_options = trait_panel._trait_target_options(trait_panel, "auto_crafter_perk_1_target")
+    assert lua.globals().CompactCalls == 3
+    for _ in range(50):
+        assert lua.globals().rawequal(trait_panel._trait_target_options(trait_panel, "auto_crafter_perk_2_target"), perk_options)
+    assert lua.globals().CompactCalls == 3
+    blessing_cached = trait_panel._trait_target_options(trait_panel, "auto_crafter_blessing_1_target")
+    assert not lua.globals().rawequal(blessing_cached, perk_options) and len(blessing_cached) == 2
+    assert lua.globals().rawequal(trait_panel._trait_target_options(trait_panel, "auto_crafter_blessing_2_target"), blessing_cached)
+    assert lua.globals().CompactCalls == 3
+    # A new plan that keeps the same catalog table keeps the cache.
+    same_catalog = trait_panel._plan.trait_catalog
+    trait_panel._plan = lua.table_from({"trait_catalog": same_catalog})
+    assert lua.globals().rawequal(trait_panel._trait_target_options(trait_panel, "auto_crafter_perk_1_target"), perk_options)
+    assert lua.globals().CompactCalls == 3
     assert [perk_options[index].value for index in range(1, len(perk_options) + 1)] == [
         "perk:content/items/perks/melee/unyielding_t4:4",
         "perk:content/items/perks/melee/carapace_t4:4",
@@ -1470,7 +1486,18 @@ def main() -> None:
             )
         }
     )
+    lua.execute("CompactCalls = 0")
     trait_panel._reconcile_trait_targets(trait_panel)
+    # A different catalog table invalidates the cache; the new perks are built once.
+    assert lua.globals().CompactCalls == 2
+    new_perk_options = trait_panel._trait_target_options(trait_panel, "auto_crafter_perk_1_target")
+    assert not lua.globals().rawequal(new_perk_options, perk_options) and new_perk_options[1].label == "+25% Damage vs Flak Armoured Enemies"
+    assert len(trait_panel._trait_target_options(trait_panel, "auto_crafter_blessing_1_target")) == 0
+    assert lua.globals().CompactCalls == 2
+    # Releasing the panel drops the cached options.
+    assert trait_panel._trait_options_cache is not None
+    trait_panel.detach(trait_panel)
+    assert trait_panel._trait_options_cache is None
     assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk:content/items/perks/ranged/flak_t4:4"
     assert lua.globals().TraitSettings["values"].auto_crafter_perk_2_target == "perk:content/items/perks/ranged/maniacs_t4:4"
 

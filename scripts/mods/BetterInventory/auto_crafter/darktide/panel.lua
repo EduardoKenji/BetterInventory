@@ -451,6 +451,7 @@ function Panel.new(dependencies)
 		_layout_pending = false,
 		_layout_defer_frames = 0,
 		_trait_catalog_key = nil,
+		_trait_options_cache = nil,
 		_queue_signature = nil,
 		_ctrl_v_down = false,
 		_pivot_x = nil,
@@ -1341,6 +1342,18 @@ function Panel.new(dependencies)
 			return options
 		end
 
+		-- Built once per (catalog table, kind): the refresh closures call this every frame.
+		local cache = self._trait_options_cache
+
+		if not cache or cache.catalog ~= catalog then
+			cache = { catalog = catalog }
+			self._trait_options_cache = cache
+		end
+
+		if cache[catalog_kind] then
+			return cache[catalog_kind]
+		end
+
 		for _, entry in ipairs(catalog[catalog_kind] or {}) do
 			if entry.id then
 				local label = clean_single_line(entry.display_name or localized_game_text(entry.display_name_key) or display_stat_name(entry.id))
@@ -1366,6 +1379,8 @@ function Panel.new(dependencies)
 				end
 			end
 		end
+
+		cache[catalog_kind] = options
 
 		return options
 	end
@@ -2588,6 +2603,7 @@ function Panel.new(dependencies)
 		self._layout_pending = false
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil
+		self._trait_options_cache = nil
 		self._queue_signature = nil
 		self._import_signature = nil
 		self._queue_craft_armed = false
@@ -2641,6 +2657,7 @@ function Panel.new(dependencies)
 		self._layout_pending = false
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil
+		self._trait_options_cache = nil
 		self._queue_signature = nil
 		self._import_signature = nil
 		self._queue_craft_armed = false

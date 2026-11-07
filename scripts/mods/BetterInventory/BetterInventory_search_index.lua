@@ -33,7 +33,6 @@ local FINGERPRINT_PROVIDER_NAMES = {
 	"is_equipped",
 	"is_loadout",
 	"is_new",
-	"is_perfect",
 }
 local ITEM_NAME_KEYS = {
 	"id",
