@@ -117,7 +117,7 @@ def main() -> None:
     assert ambiguous.target_distance == float("inf")
 
     requested_label = "Use closest fallback candidate weapon if exact stat match weapon is not found"
-    assert requested_label in PANEL_PATH.read_text(encoding="utf-8")
+    assert 'localize("auto_crafter_panel_best_fallback")' in PANEL_PATH.read_text(encoding="utf-8")
     assert requested_label in LOCALIZATION_PATH.read_text(encoding="utf-8")
 
 

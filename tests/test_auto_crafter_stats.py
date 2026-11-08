@@ -1141,7 +1141,7 @@ def main() -> None:
     boolean_panel._set_setting(boolean_panel, "auto_crafter_buy_until_target", False)
     assert boolean_panel._acquisition_mode(boolean_panel) == "disabled"
     boolean_panel._set_setting(boolean_panel, "auto_crafter_buy_until_target", "first_weapon")
-    assert boolean_panel._acquisition_mode_text(boolean_panel) == "Automatically buy first weapon and proceed"
+    assert boolean_panel._acquisition_mode_text(boolean_panel) == "auto_crafter_acquisition_first_weapon"
     assert boolean_panel._step_acquisition_mode(boolean_panel, 1) is True
     assert boolean_panel._acquisition_mode(boolean_panel) == "target_search"
     assert boolean_panel._dump_comparison(boolean_panel) == "exact"
@@ -1186,7 +1186,7 @@ def main() -> None:
         color_entries[index].initial_content.label
         for index in range(1, len(color_entries) + 1)
     ]
-    assert "MyFavorites color" in color_labels
+    assert "auto_crafter_myfavorites_color" in color_labels
 
     no_color_panel = panel_module.new(
         lua.table_from(
@@ -1202,7 +1202,7 @@ def main() -> None:
         no_color_entries[index].initial_content.label
         for index in range(1, len(no_color_entries) + 1)
     ]
-    assert "MyFavorites color" not in no_color_labels
+    assert "auto_crafter_myfavorites_color" not in no_color_labels
 
     queue_header = panel._entry(
         panel,
@@ -1563,11 +1563,11 @@ def main() -> None:
     assert "length_scrolled" in panel_source
     assert "local CURRENCY_ROW_HEIGHT = 26" in panel_source
     assert 'size = { 18, 18 }' in panel_source
-    assert '"Current resources", "wallet"' in panel_source
-    assert '"Generous cost estimate", "generous"' in panel_source
-    assert '"Unlucky cost estimate", "unlucky"' in panel_source
-    assert '"Remaining (generous)", "remaining_generous"' in panel_source
-    assert '"Remaining (unlucky)", "remaining_unlucky"' in panel_source
+    assert 'add_estimate_currency("auto_crafter_panel_current_resources", "wallet")' in panel_source
+    assert 'add_estimate_currency("auto_crafter_panel_generous_cost", "generous")' in panel_source
+    assert 'add_estimate_currency("auto_crafter_panel_unlucky_cost", "unlucky")' in panel_source
+    assert 'add_estimate_currency("auto_crafter_panel_remaining_generous", "remaining_generous")' in panel_source
+    assert 'add_estimate_currency("auto_crafter_panel_remaining_unlucky", "remaining_unlucky")' in panel_source
     assert "restore_scroll_offset" in panel_source
     assert "set_scrollbar_progress" in panel_source
     assert 'add_checkbox("auto_crafter_change_perks"' in panel_source
@@ -1577,31 +1577,33 @@ def main() -> None:
     assert 'add_checkbox("auto_crafter_show_blessing_grid"' in panel_source
     assert "SECTION_ADVANCED" not in panel_source
     assert "auto_crafter_panel_request_mode" not in panel_source
-    assert 'localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")' in panel_source
-    assert 'localize("auto_crafter_panel_stop", "> CLICK HERE TO STOP / INTERRUPT <"), ""' in panel_source
+    assert 'localize("auto_crafter_panel_preview")' in panel_source
+    assert 'localize("auto_crafter_panel_stop"), ""' in panel_source
     assert "local craft_enabled = not run_is_active() and not import_busy" in panel_source
     assert "selectable = stop_enabled" in panel_source
     assert "previous_active ~= workflow_active" in panel_source
     assert 'size = { width - 20, ROW_HEIGHT }' in panel_source
     assert "phase4 and phase4.running == true" in panel_source
     assert "auto_crafter_rename_result" not in panel_source
-    assert "Resume matching dump stat weapon from inventory" in panel_source
-    assert "Include favorited inventory weapons when resuming" in panel_source
-    assert "Automatically favorite crafted weapon" in panel_source
+    assert 'add_checkbox("auto_crafter_reuse_inventory_base"' in panel_source
+    assert 'add_checkbox("auto_crafter_include_favorite_inventory_bases"' in panel_source
+    assert 'add_checkbox("auto_crafter_favorite_result"' in panel_source
     assert 'self:_setting("auto_crafter_favorite_result", true) == true and self:_myfavorites_available()' in panel_source
-    assert 'localize("auto_crafter_myfavorites_color", "MyFavorites color")' in panel_source
-    assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('localize("auto_crafter_myfavorites_color", "MyFavorites color")') < panel_source.index('localize("auto_crafter_buy_until_target", "Base weapon acquisition")')
-    assert "Automatically buy first weapon and proceed" in panel_source
-    assert "Automatically buy until target stats weapon is found" in panel_source
+    assert 'localize("auto_crafter_myfavorites_color")' in panel_source
+    assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('localize("auto_crafter_myfavorites_color")') < panel_source.index('localize("auto_crafter_buy_until_target")')
+    assert 'localize("auto_crafter_acquisition_" .. mode)' in panel_source
+    localization_source = "".join(path.read_text(encoding="utf-8") for path in PANEL_PATH.parents[2].glob("BetterInventory_localization_*.lua"))
+    assert "Automatically buy first weapon and proceed" in localization_source
+    assert "Automatically buy until target stats weapon is found" in localization_source
     assert 'variant = "dump_target_stepper"' in panel_source
     assert 'variant = "acquisition_stepper"' in panel_source
     assert 'content_id = "comparison_hotspot"' in panel_source
     assert 'style_id = "comparison_arrow"' in panel_source
     assert "SECTION_RESUMING" in panel_source and "SECTION_OUTPUT" not in panel_source
-    assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('localize("auto_crafter_buy_until_target", "Base weapon acquisition")') < panel_source.index('localize("auto_crafter_panel_resuming"')
+    assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('localize("auto_crafter_buy_until_target")') < panel_source.index('localize("auto_crafter_panel_resuming"')
     assert "auto_crafter_panel_saved_only" not in panel_source and "auto_crafter_panel_not_connected" not in panel_source
-    assert "Automatically consecrate weapon to Transcendent" in panel_source
-    assert "Automatically upgrade weapon item level to 500" in panel_source
+    assert 'add_checkbox("auto_crafter_consecrate_transcendent"' in panel_source
+    assert 'add_checkbox("auto_crafter_upgrade_expertise_500"' in panel_source
     assert panel_source.index('add_checkbox("auto_crafter_defer_bad_weapon_processing"') < panel_source.index('add_checkbox("auto_crafter_level_mastery_20"')
     backend_source = BACKEND_PATH.read_text(encoding="utf-8")
     assert "Items.trait_description" in backend_source

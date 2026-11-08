@@ -14,8 +14,8 @@ def main() -> None:
 
     # The queue is visible above Planner in both manual and imported modes,
     # while detailed imported rows carry a highlighted current item.
-    assert '"Active Queue"' in panel
-    active_queue_entry = panel.split('localize("auto_crafter_panel_active_queue", "Active Queue")', 1)[1].split('localize("auto_crafter_panel_planner", "Planner configuration")', 1)[0]
+    assert 'localize("auto_crafter_panel_active_queue")' in panel
+    active_queue_entry = panel.split('localize("auto_crafter_panel_active_queue")', 1)[1].split('localize("auto_crafter_panel_planner")', 1)[0]
     assert "selectable = true" in active_queue_entry and "selectable = false" not in active_queue_entry
     assert 'variant = "queue_job"' in panel
     assert "queue_current" in panel
@@ -72,12 +72,12 @@ def main() -> None:
 
     # Manual mark selection sits between Planner and trait targeting. Estimates
     # own all projected costs and remain immediately above Craft.
-    planner = panel.index('localize("auto_crafter_panel_planner", "Planner configuration")')
-    marks = panel.index('localize("auto_crafter_panel_marks", "Marks")')
-    dump_stat = panel.index('localize("auto_crafter_panel_dump_stat", "Dump stat")')
-    traits = panel.index('localize("auto_crafter_panel_trait_targets", "Perk and blessing targets")')
-    estimates = panel.index('localize("auto_crafter_panel_estimates", "Estimates")')
-    craft = panel.index('localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")')
+    planner = panel.index('localize("auto_crafter_panel_planner")')
+    marks = panel.index('localize("auto_crafter_panel_marks")')
+    dump_stat = panel.index('localize("auto_crafter_panel_dump_stat")')
+    traits = panel.index('localize("auto_crafter_panel_trait_targets")')
+    estimates = panel.index('localize("auto_crafter_panel_estimates")')
+    craft = panel.index('localize("auto_crafter_panel_preview")')
     assert planner < marks < dump_stat < traits < estimates < craft
     assert "SECTION_MARKS" in panel
     assert "SECTION_ESTIMATES" in panel
@@ -141,7 +141,7 @@ def main() -> None:
     review_queue = lua.table_from({"job_count": 2, "jobs": lua.table_from([
         lua.table_from({}), lua.table_from({"stat_fallback": True}),
     ])})
-    assert instance._queue_confirmation_label(instance, review_queue) == "> CONFIRM FALLBACK STATS <"
+    assert instance._queue_confirmation_label(instance, review_queue) == "auto_crafter_confirm_fallback_stats"
     review_queue.jobs[2].stat_fallback = False
     assert instance._queue_confirmation_label(instance, review_queue) == "> CONFIRM TWO-WEAPON CRAFT <"
 
