@@ -306,6 +306,5 @@ ImageLayout.apply_blueprint = function(mod, blueprint, configuration, columns, e
 end
 
 ImageLayout.item_kind = item_kind
-ImageLayout.profile_prefix = profile_prefix
 
 return ImageLayout
