@@ -753,9 +753,6 @@ local localization = {
 	option_requires_single_column_mode = {
 		en = "Disable grid layout to use this single-column option.",
 	},
-	option_requires_ranked_blessing_text = {
-		en = "Select ranked blessing text to use this option.",
-	},
 	option_requires_quick_look_card_single_column_integration = {
 		en = "Enable single-column weapon modifiers to use this option.",
 	},
@@ -791,9 +788,6 @@ local localization = {
 	},
 	option_requires_weapon_perks = {
 		en = "Enable weapon perk text to use this option.",
-	},
-	option_requires_perk_rank_symbols = {
-		en = "Enable perk level symbols to set their size.",
 	},
 	option_requires_weapon_blessings = {
 		en = "Select blessing icons to use this option.",

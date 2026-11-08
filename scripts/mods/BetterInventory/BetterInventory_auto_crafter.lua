@@ -111,14 +111,14 @@ local function format_resource_costs(costs)
 	)
 end
 
-local function localize(setting_id, fallback)
+local function localize(setting_id)
 	if not mod or type(mod.localize) ~= "function" then
-		return fallback or setting_id
+		return setting_id
 	end
 
 	local ok, text = pcall(mod.localize, mod, setting_id)
 
-	return ok and text or fallback or setting_id
+	return ok and text or setting_id
 end
 
 local function setting(setting_id, default_value)
@@ -421,7 +421,7 @@ local function reporter(ui_panel)
 				end
 
 				log("info", "Auto Crafter Helper read-only probe started.")
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), localize("auto_crafter_probe_started", "Read-only probe started."))
+				notify(localize("auto_crafter_notification_title"), localize("auto_crafter_probe_started"))
 			elseif kind == "probe_complete" then
 				if ui_panel then
 					ui_panel:set_phase("probe_complete", payload)
@@ -429,14 +429,14 @@ local function reporter(ui_panel)
 
 				local access = payload and payload.crafting_access or {}
 				log("info", "Auto Crafter Helper read-only probe complete: " .. format_probe(payload) .. string.format(" | Hadron unlocked=%s, facility=%s, cache=%s", tostring(access.unlocked), tostring(access.facility_unlocked), tostring(access.progression_cached)))
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), format_probe(payload))
+				notify(localize("auto_crafter_notification_title"), format_probe(payload))
 			elseif kind == "probe_failed" then
 				if ui_panel then
 					ui_panel:set_phase("probe_failed")
 				end
 
 				log("error", "Auto Crafter Helper read-only probe failed: " .. tostring(payload and payload.error))
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("%s: %s", localize("auto_crafter_probe_failed", "Read-only probe failed"), tostring(payload and payload.error)))
+				notify(localize("auto_crafter_notification_title"), string.format("%s: %s", localize("auto_crafter_probe_failed"), tostring(payload and payload.error)))
 			elseif kind == "catalog_discovery_started" then
 				if ui_panel then
 					ui_panel:set_phase("trait_discovery")
@@ -449,7 +449,7 @@ local function reporter(ui_panel)
 				end
 
 				log("info", "Auto Crafter Helper " .. format_catalog(payload and payload.catalog))
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), format_catalog(payload and payload.catalog))
+				notify(localize("auto_crafter_notification_title"), format_catalog(payload and payload.catalog))
 			elseif kind == "catalog_discovery_failed" then
 				if ui_panel then
 					ui_panel:set_phase("trait_discovery_failed")
@@ -457,16 +457,16 @@ local function reporter(ui_panel)
 
 				local message = format_catalog_failure(payload)
 				log("error", "Auto Crafter Helper " .. message)
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message)
+				notify(localize("auto_crafter_notification_title"), message)
 			elseif kind == "plan_preview" then
 				log("info", "Auto Crafter Helper read-only plan preview: " .. format_plan(payload and payload.plan))
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), format_plan(payload and payload.plan))
+				notify(localize("auto_crafter_notification_title"), format_plan(payload and payload.plan))
 			elseif kind == "mutation_blocked" then
 				if ui_panel then
 					ui_panel:set_phase("mutation_blocked")
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Mutation blocked: " .. tostring(payload and payload.reason or "preflight failed"), true)
+				notify(localize("auto_crafter_notification_title"), "Mutation blocked: " .. tostring(payload and payload.reason or "preflight failed"), true)
 			elseif kind == "purchase_search_started" then
 				if ui_panel then
 					ui_panel:set_phase(payload and payload.phase3 and "phase3_search_purchase" or "search_purchase")
@@ -475,7 +475,7 @@ local function reporter(ui_panel)
 				local search = payload and payload.search or {}
 				local target = search.target_offer or {}
 				local cap = search.cap_by_dockets and string.format(" Ordo dockets limit: %s.", tostring(search.docket_cap or "?")) or ""
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Started buying %s. Target: %s %s.%s", tostring(target.display_name or "selected weapon"), readable_stat_name({dump_stat_id = search.dump_stat}), tostring(search.target_dump or "?"), cap))
+				notify(localize("auto_crafter_notification_title"), string.format("Started buying %s. Target: %s %s.%s", tostring(target.display_name or "selected weapon"), readable_stat_name({dump_stat_id = search.dump_stat}), tostring(search.target_dump or "?"), cap))
 			elseif kind == "purchase_result" then
 				if ui_panel then
 					ui_panel:set_phase(payload and payload.search and payload.search.phase3 and "phase3_search_purchase" or "search_purchase")
@@ -484,7 +484,7 @@ local function reporter(ui_panel)
 				local search = payload and payload.search or {}
 
 				if progress_milestone(search.purchases, 10) then
-					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Purchased %s weapons. Spent %s Ordo dockets. Best result: %s", tostring(search.purchases or "?"), tostring(search.spent or "?"), format_candidate(search.best)))
+					notify(localize("auto_crafter_notification_title"), string.format("Purchased %s weapons. Spent %s Ordo dockets. Best result: %s", tostring(search.purchases or "?"), tostring(search.spent or "?"), format_candidate(search.best)))
 				end
 			elseif kind == "purchase_search_complete" then
 				if ui_panel then
@@ -492,15 +492,15 @@ local function reporter(ui_panel)
 				end
 
 				local prefix = payload and payload.reused_inventory and "Using matching inventory weapon: " or "Found matching weapon: "
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), prefix .. format_candidate(payload and payload.candidate))
+				notify(localize("auto_crafter_notification_title"), prefix .. format_candidate(payload and payload.candidate))
 			elseif kind == "candidate_favorited" then
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Saved matching weapon as favorite: " .. tostring(payload and payload.candidate and payload.candidate.display_name or "weapon"))
+				notify(localize("auto_crafter_notification_title"), "Saved matching weapon as favorite: " .. tostring(payload and payload.candidate and payload.candidate.display_name or "weapon"))
 			elseif kind == "purchase_search_stopped" then
 				if ui_panel then
 					ui_panel:set_phase(tostring(payload and payload.reason or "search_stopped"))
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), search_stop_message(payload and payload.reason))
+				notify(localize("auto_crafter_notification_title"), search_stop_message(payload and payload.reason))
 			elseif kind == "phase3_fodder_started" then
 				if ui_panel then
 					ui_panel:set_phase("phase3_fodder_preflight")
@@ -519,7 +519,7 @@ local function reporter(ui_panel)
 					ui_panel:set_phase("phase3_deferred_cleanup_complete")
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Discarded %d unused purchased weapon(s) after mastery reached level 20.", tonumber(payload and payload.count) or 0))
+				notify(localize("auto_crafter_notification_title"), string.format("Discarded %d unused purchased weapon(s) after mastery reached level 20.", tonumber(payload and payload.count) or 0))
 			elseif kind == "phase3_complete" then
 				if ui_panel then
 					ui_panel:set_phase("phase3_complete")
@@ -532,7 +532,7 @@ local function reporter(ui_panel)
 				local reason = tostring(payload and payload.reason or "phase3_stopped")
 
 				if string.sub(reason, 1, #"phase3_") == "phase3_" then
-					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), search_stop_message(reason))
+					notify(localize("auto_crafter_notification_title"), search_stop_message(reason))
 				end
 			elseif kind == "mastery_upgrade_complete" or kind == "mastery_sacrifice_complete" or kind == "mastery_sync_started" or kind == "mastery_poll_result" or kind == "mastery_sync_timeout" then
 				if ui_panel then
@@ -548,7 +548,7 @@ local function reporter(ui_panel)
 				end
 
 				if current_level then
-					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Weapon mastery reached level %d/%d.", current_level, maximum_level))
+					notify(localize("auto_crafter_notification_title"), string.format("Weapon mastery reached level %d/%d.", current_level, maximum_level))
 				end
 			elseif kind == "phase4_started" then
 				if ui_panel then
@@ -557,21 +557,21 @@ local function reporter(ui_panel)
 			elseif kind == "phase4_expertise_milestone" then
 				local level = tonumber(payload and payload.level)
 				if level and level % 100 == 0 then
-					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Weapon level reached %d/500.", level))
+					notify(localize("auto_crafter_notification_title"), string.format("Weapon level reached %d/500.", level))
 				end
 			elseif kind == "phase4_complete" then
 				if ui_panel then
 					ui_panel:set_phase("phase4_complete")
 				end
 				local elapsed = format_elapsed(payload and payload.elapsed_seconds)
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Final weapon crafting complete in " .. elapsed .. ". " .. format_resource_costs(payload and payload.resource_costs) .. ". " .. format_candidate(payload and payload.candidate))
+				notify(localize("auto_crafter_notification_title"), "Final weapon crafting complete in " .. elapsed .. ". " .. format_resource_costs(payload and payload.resource_costs) .. ". " .. format_candidate(payload and payload.candidate))
 			elseif kind == "operation_failed" then
 				if ui_panel then
 					ui_panel:set_phase("operation_failed")
 				end
 
 				log("error", "Auto Crafter Helper operation failed: " .. tostring(payload and payload.error))
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Operation failed: " .. tostring(payload and payload.error))
+				notify(localize("auto_crafter_notification_title"), "Operation failed: " .. tostring(payload and payload.error))
 			elseif kind == "context_exit" then
 				log("info", "Auto Crafter Helper stopped read-only work: " .. tostring(payload and payload.reason or "context exit"))
 			end
@@ -829,7 +829,7 @@ function AutoCrafter.configure(dependencies)
 				local job = payload and payload.job or {}
 				local slot = tostring(job.slot or "queued")
 				local weapon = tostring(job.display_name or job.offer and job.offer.display_name or "weapon")
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Skipped %s weapon (%s): a perfectly crafted family-equivalent weapon already exists.", slot, weapon))
+				notify(localize("auto_crafter_notification_title"), string.format("Skipped %s weapon (%s): a perfectly crafted family-equivalent weapon already exists.", slot, weapon))
 			elseif kind == "queue_complete" then
 				if controller then
 					pcall(controller.end_queue_operation, controller)
@@ -865,14 +865,14 @@ function AutoCrafter.configure(dependencies)
 		local native_context = games_lantern_resolution_context and games_lantern_resolution_context()
 		if not native_context or native_context.native_store_ready ~= true then
 			local reason = native_context and native_context.native_store_reason or "native_store_unavailable"
-			notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Brunt's Armoury is refreshing. Wait for its weapon list, then try Craft again.", true)
+			notify(localize("auto_crafter_notification_title"), "Brunt's Armoury is refreshing. Wait for its weapon list, then try Craft again.", true)
 
 			return false, reason
 		end
 		for _, job in ipairs(queue_state.jobs or {}) do
 			local offer_id = job.offer and job.offer.offer_id
 			if offer_id == nil or native_context.visible_offer_ids[tostring(offer_id)] ~= true then
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Brunt's Armoury changed after this build was imported. Paste the build again to refresh its weapon offers.", true)
+				notify(localize("auto_crafter_notification_title"), "Brunt's Armoury changed after this build was imported. Paste the build again to refresh its weapon offers.", true)
 
 				return false, "native_store_changed"
 			end
@@ -1136,13 +1136,13 @@ function AutoCrafter.configure(dependencies)
 						local detail = payload and payload.error
 						local message = "Games Lantern import failed: " .. reason .. (detail and " (" .. tostring(detail) .. ")" or "")
 						log("error", message)
-						notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message)
+						notify(localize("auto_crafter_notification_title"), message)
 					elseif kind == "import_staged" then
 						for _, job in ipairs(payload and payload.build and payload.build.jobs or {}) do
 							if job.stat_fallback then
-								local message = string.format(localize("auto_crafter_stat_fallback_notice", "Imported %s with replacement stats (380 total). The build's stat values are incompatible. Review or edit the displayed targets before confirming crafting."), tostring(job.display_name or "weapon"))
+								local message = string.format(localize("auto_crafter_stat_fallback_notice"), tostring(job.display_name or "weapon"))
 								log("warning", message)
-								notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message, true)
+								notify(localize("auto_crafter_notification_title"), message, true)
 							end
 							local fallback = job.mark_fallback
 							if fallback then
@@ -1150,7 +1150,7 @@ function AutoCrafter.configure(dependencies)
 								local suffix = adjusted and " Incompatible profile fields were replaced with valid native choices; review this queue entry before crafting." or ""
 								local message = string.format("Imported %s, but its Games Lantern mark could not be identified. Using fallback mark %s.%s", tostring(fallback.requested or job.display_name or "weapon"), tostring(fallback.selected or "unknown"), suffix)
 								log("warning", message)
-								notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message, true)
+								notify(localize("auto_crafter_notification_title"), message, true)
 							end
 						end
 					else
@@ -1330,11 +1330,9 @@ function AutoCrafter.configure(dependencies)
 			return start_games_lantern_queue and start_games_lantern_queue(confirmed, confirmed_signature) or false
 		end,
 		notify_blocked = function(reason)
-			return notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Mutation blocked: " .. tostring(reason), true)
+			return notify(localize("auto_crafter_notification_title"), "Mutation blocked: " .. tostring(reason), true)
 		end,
-		localize = function(setting_id)
-			return localize(setting_id, setting_id)
-		end,
+		localize = localize,
 		logger = {
 			info = function(_, message) log("info", message) end,
 			error = function(_, message) log("error", message) end,

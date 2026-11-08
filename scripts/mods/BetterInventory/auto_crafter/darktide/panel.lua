@@ -493,15 +493,15 @@ function Panel.new(dependencies)
 		_pivot_y = nil,
 	}
 
-	local function localize(setting_id, fallback)
+	local function localize(setting_id)
 		if type(self._localize) ~= "function" then
-			return fallback or setting_id
+			return setting_id
 		end
 
 		local ok, text = pcall(self._localize, setting_id)
 
-		if not ok or type(text) ~= "string" or text == "" or text == setting_id or text == "<" .. tostring(setting_id) .. ">" then
-			return fallback or setting_id
+		if not ok or type(text) ~= "string" or text == "" or text == "<" .. tostring(setting_id) .. ">" then
+			return setting_id
 		end
 
 		return text
@@ -789,7 +789,7 @@ function Panel.new(dependencies)
 			return offers, selected_display_name
 		end
 
-		return offers, selected_offer and localize("auto_crafter_panel_selected_weapon", "Selected weapon") or localize("auto_crafter_panel_no_target", "no weapon selected")
+		return offers, selected_offer and localize("auto_crafter_panel_selected_weapon") or localize("auto_crafter_panel_no_target")
 	end
 
 	function self:_selected_store_offer(snapshot)
@@ -932,7 +932,7 @@ function Panel.new(dependencies)
 		end
 		local stat_line = job.custom_stats_enabled and #stats == 5 and "Stats: " .. table.concat(stats, " / ") or string.format("Dump stat: %s %s", value_text(job.dump_stat_label or job.dump_stat, "?"), integer_text(job.dump_target, "?"))
 		if job.stat_fallback then
-			stat_line = localize("auto_crafter_stat_fallback_review", "Review fallback stats") .. ": " .. table.concat(stats, " / ")
+			stat_line = localize("auto_crafter_stat_fallback_review") .. ": " .. table.concat(stats, " / ")
 		end
 
 		return string.format(
@@ -1010,7 +1010,7 @@ function Panel.new(dependencies)
 	function self:_queue_confirmation_label(queue)
 		for _, job in ipairs(queue.jobs or {}) do
 			if job.stat_fallback then
-				return localize("auto_crafter_confirm_fallback_stats", "> CONFIRM FALLBACK STATS <")
+				return localize("auto_crafter_confirm_fallback_stats")
 			end
 		end
 		return queue.job_count == 1 and "> CONFIRM ONE-WEAPON CRAFT <" or "> CONFIRM TWO-WEAPON CRAFT <"
@@ -1138,7 +1138,7 @@ function Panel.new(dependencies)
 		local queue_job = self:_selected_queue_job(queue)
 		local editor_enabled = not queue_job or queue and queue.state == "staged"
 
-		widget.content.custom_stat_total_label = localize("auto_crafter_panel_custom_stat_total", "Total stat sum")
+		widget.content.custom_stat_total_label = localize("auto_crafter_panel_custom_stat_total")
 		widget.content.custom_stat_total = tostring(total) .. "/380"
 		widget.content.custom_stat_total_value = total
 
@@ -1181,13 +1181,8 @@ function Panel.new(dependencies)
 
 	function self:_acquisition_mode_text()
 		local mode = self:_acquisition_mode()
-		local fallbacks = {
-			disabled = "Disabled",
-			first_weapon = "Automatically buy first weapon and proceed",
-			target_search = "Automatically buy until target stats weapon is found",
-		}
 
-		return localize("auto_crafter_acquisition_" .. mode, fallbacks[mode])
+		return localize("auto_crafter_acquisition_" .. mode)
 	end
 
 	function self:_step_acquisition_mode(direction)
@@ -1208,7 +1203,7 @@ function Panel.new(dependencies)
 
 	function self:_dump_comparison_text()
 		local comparison = self:_dump_comparison()
-		return localize("auto_crafter_dump_stat_comparison_" .. comparison, comparison == "at_most" and "is lower or equal to" or "exactly matches")
+		return localize("auto_crafter_dump_stat_comparison_" .. comparison)
 	end
 
 	function self:_toggle_dump_comparison()
@@ -1229,13 +1224,13 @@ function Panel.new(dependencies)
 			return preview
 		end
 
-		return localize("auto_crafter_myfavorites_color_" .. tostring(color_index), "Color " .. tostring(color_index)) .. "  ■"
+		return localize("auto_crafter_myfavorites_color_" .. tostring(color_index)) .. "  ■"
 	end
 
 	function self:_planner_target_text()
 		local _, current_weapon = self:_selected_offers(self._snapshot)
 
-		return current_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
+		return current_weapon or localize("auto_crafter_panel_no_target")
 	end
 
 	function self:_planner_dump_stat_text()
@@ -1330,7 +1325,7 @@ function Panel.new(dependencies)
 	end
 
 	function self:_planner_fallback_text()
-		return self:_setting("auto_crafter_best_candidate_fallback", true) == true and localize("auto_crafter_value_on", "On") or localize("auto_crafter_value_off", "Off")
+		return self:_setting("auto_crafter_best_candidate_fallback", true) == true and localize("auto_crafter_value_on") or localize("auto_crafter_value_off")
 	end
 
 	function self:_estimate_currency_values(profile_name)
@@ -1436,7 +1431,7 @@ function Panel.new(dependencies)
 			end
 		end
 
-		return localize("auto_crafter_panel_waiting", "waiting for probe")
+		return localize("auto_crafter_panel_waiting")
 	end
 
 	function self:_target_policy_value(setting_id)
@@ -1652,7 +1647,7 @@ function Panel.new(dependencies)
 	function self:_entries(snapshot)
 		local store = snapshot and snapshot.store or {}
 		local _, selected_weapon = self:_selected_offers(snapshot)
-		local selected = selected_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
+		local selected = selected_weapon or localize("auto_crafter_panel_no_target")
 		local plan = self._plan or snapshot and snapshot.plan
 		local queue = self:_games_lantern_queue()
 		local imported = self:_games_lantern_import()
@@ -1660,24 +1655,24 @@ function Panel.new(dependencies)
 		local queue_owned = queue_target ~= nil and queue.state ~= "empty"
 		local queue_active = queue_owned and queue.busy == true
 		local entries = {
-			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), "", {
+			self:_entry(localize("auto_crafter_panel_title"), "", {
 				variant = "title",
 			}),
-			self:_entry(localize("auto_crafter_panel_status", "Status"), self._phase or value_text(snapshot and snapshot.phase, "idle"), {
+			self:_entry(localize("auto_crafter_panel_status"), self._phase or value_text(snapshot and snapshot.phase, "idle"), {
 				refresh = function(widget)
 					widget.content.detail = self._phase or value_text(self._controller_state and self._controller_state.phase, "idle")
 				end,
 			}),
-			self:_entry(localize("auto_crafter_panel_inventory", "Inventory"), string.format("%s: %s  |  %s: %s", localize("auto_crafter_panel_offers", "Offers"), value_text(store.offer_count, "?"), localize("auto_crafter_panel_gear", "Gear"), value_text(snapshot and snapshot.gear and snapshot.gear.item_count, "?"))),
-			self:_entry(localize("auto_crafter_panel_target", "Target"), queue_target or selected, {
+			self:_entry(localize("auto_crafter_panel_inventory"), string.format("%s: %s  |  %s: %s", localize("auto_crafter_panel_offers"), value_text(store.offer_count, "?"), localize("auto_crafter_panel_gear"), value_text(snapshot and snapshot.gear and snapshot.gear.item_count, "?"))),
+			self:_entry(localize("auto_crafter_panel_target"), queue_target or selected, {
 				refresh = function(widget)
 					local current_queue_target = self:_games_lantern_queue_target(self:_games_lantern_queue())
 					local _, current_weapon = self:_selected_offers(self._snapshot)
 
-					widget.content.detail = current_queue_target or current_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
+					widget.content.detail = current_queue_target or current_weapon or localize("auto_crafter_panel_no_target")
 				end,
 			}),
-			self:_entry(localize("auto_crafter_show_status_hud", "Show persistent crafting status"), "", {
+			self:_entry(localize("auto_crafter_show_status_hud"), "", {
 				checked = self:_setting("auto_crafter_show_status_hud", true) == true,
 				selectable = true,
 				variant = "checkbox",
@@ -1688,13 +1683,13 @@ function Panel.new(dependencies)
 					widget.content.checked = self:_setting("auto_crafter_show_status_hud", true) == true
 				end,
 			}),
-			self:_entry(localize("auto_crafter_panel_active_queue", "Active Queue"), imported and imported.state or queue and queue.state or "manual", {
+			self:_entry(localize("auto_crafter_panel_active_queue"), imported and imported.state or queue and queue.state or "manual", {
 				selectable = true,
 				section_header = true,
 				section_id = SECTION_QUEUE,
 				variant = "section",
 			}),
-			self:_entry(localize("auto_crafter_panel_planner", "Planner configuration"), "", {
+			self:_entry(localize("auto_crafter_panel_planner"), "", {
 				selectable = true,
 				section_header = true,
 				section_id = SECTION_PLANNER,
@@ -1799,7 +1794,7 @@ function Panel.new(dependencies)
 				}))
 			end
 		end
-		local function add_checkbox(setting_id, label_id, fallback, default_value, enabled, reflow, height)
+		local function add_checkbox(setting_id, label_id, default_value, enabled, reflow, height)
 			local function is_enabled()
 				if queue_active then
 					return false
@@ -1811,7 +1806,7 @@ function Panel.new(dependencies)
 				return enabled ~= false
 			end
 			local initial_enabled = is_enabled()
-			table.insert(entries, self:_entry(localize(label_id, fallback), "", {
+			table.insert(entries, self:_entry(localize(label_id), "", {
 				checked = self:_setting(setting_id, default_value) == true,
 				enabled = initial_enabled,
 				height = height,
@@ -1831,7 +1826,7 @@ function Panel.new(dependencies)
 				end,
 			}))
 		end
-		local function add_target_selector(setting_id, label_id, fallback, enabled, unavailable_text)
+		local function add_target_selector(setting_id, label_id, enabled, unavailable_text)
 			local function is_enabled()
 				if queue_active then
 					return false
@@ -1843,7 +1838,7 @@ function Panel.new(dependencies)
 				return enabled ~= false
 			end
 			local initial_enabled = is_enabled()
-			table.insert(entries, self:_entry(localize(label_id, fallback), initial_enabled and self:_target_policy_text(setting_id) or unavailable_text, {
+			table.insert(entries, self:_entry(localize(label_id), initial_enabled and self:_target_policy_text(setting_id) or unavailable_text, {
 				enabled = initial_enabled,
 				selectable = initial_enabled,
 				variant = "enum_stepper",
@@ -1866,7 +1861,7 @@ function Panel.new(dependencies)
 			}))
 		end
 		local function add_mark_entries()
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_marks", "Marks"), "", {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_marks"), "", {
 				selectable = true,
 				section_header = true,
 				section_id = SECTION_MARKS,
@@ -1890,7 +1885,7 @@ function Panel.new(dependencies)
 			end
 
 			if #marks == 0 then
-				table.insert(entries, self:_entry(localize("auto_crafter_panel_select_weapon", "Select a weapon in Brunt's list."), "", {
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_select_weapon"), "", {
 					variant = "summary",
 				}))
 				return
@@ -1923,7 +1918,7 @@ function Panel.new(dependencies)
 		add_mark_entries()
 
 		if not self._section_collapsed[SECTION_PLANNER] then
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_planner_target", "Planner target"), self:_selected_queue_job_name(queue) or self:_planner_target_text(), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_planner_target"), self:_selected_queue_job_name(queue) or self:_planner_target_text(), {
 				refresh = function(widget)
 					local current_queue = self:_games_lantern_queue()
 					widget.content.detail = self:_selected_queue_job_name(current_queue) or self:_planner_target_text()
@@ -1932,14 +1927,14 @@ function Panel.new(dependencies)
 			local selected_queue_job = self:_selected_queue_job(queue)
 			local custom_stats_enabled = selected_queue_job and selected_queue_job.custom_stats_enabled == true or not queue_owned and self:_setting("auto_crafter_custom_stats", false) == true
 			if queue_owned then
-				table.insert(entries, self:_entry(localize("auto_crafter_custom_stats", "Custom stats"), "", {
+				table.insert(entries, self:_entry(localize("auto_crafter_custom_stats"), "", {
 					checked = custom_stats_enabled,
 					enabled = false,
 					selectable = false,
 					variant = "checkbox",
 				}))
 			else
-				add_checkbox("auto_crafter_custom_stats", "auto_crafter_custom_stats", "Custom stats", false, nil, true)
+				add_checkbox("auto_crafter_custom_stats", "auto_crafter_custom_stats", false, nil, true)
 			end
 			if custom_stats_enabled then
 				table.insert(entries, self:_entry("", "", {
@@ -1949,7 +1944,7 @@ function Panel.new(dependencies)
 				}))
 			end
 			if not custom_stats_enabled then
-				table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_stat", "Dump stat"), self:_planner_dump_stat_text(), {
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_stat"), self:_planner_dump_stat_text(), {
 					enabled = not queue_owned,
 					selectable = not queue_owned,
 					variant = "enum_stepper",
@@ -1972,7 +1967,7 @@ function Panel.new(dependencies)
 						variant = "stat_grid",
 					}))
 				end
-				table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_target", "Dump target"), integer_text(self:_setting("auto_crafter_dump_stat_target", 60)), {
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_target"), integer_text(self:_setting("auto_crafter_dump_stat_target", 60)), {
 					comparison_detail = self:_dump_comparison_text(),
 					enabled = not queue_owned,
 					selectable = not queue_owned,
@@ -1994,9 +1989,9 @@ function Panel.new(dependencies)
 					end,
 				}))
 			end
-			add_checkbox("auto_crafter_cap_by_dockets", "auto_crafter_cap_by_dockets", "Cap perfect-roll weapon acquisition by Ordo dockets", true, nil, true)
+			add_checkbox("auto_crafter_cap_by_dockets", "auto_crafter_cap_by_dockets", true, nil, true)
 			if self:_setting("auto_crafter_cap_by_dockets", true) == true then
-				table.insert(entries, self:_entry(localize("auto_crafter_panel_docket_cap", "Ordo dockets cap"), integer_text(self:_setting("auto_crafter_docket_cap", 500000)), {
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_docket_cap"), integer_text(self:_setting("auto_crafter_docket_cap", 500000)), {
 					enabled = not queue_active,
 					selectable = not queue_active,
 					variant = "stepper",
@@ -2012,11 +2007,11 @@ function Panel.new(dependencies)
 						set_steppers_disabled(widget.content, queue_active)
 					end,
 				}))
-				add_checkbox("auto_crafter_docket_cap_includes_mastery", "auto_crafter_docket_cap_includes_mastery", "Include mastery leveling purchases in Ordo dockets cap", false)
+				add_checkbox("auto_crafter_docket_cap_includes_mastery", "auto_crafter_docket_cap_includes_mastery", false)
 			end
-			add_checkbox("auto_crafter_cap_by_max_purchases", "auto_crafter_cap_by_max_purchases", "Cap perfect-roll weapon acquisition by max purchases", false, nil, true)
+			add_checkbox("auto_crafter_cap_by_max_purchases", "auto_crafter_cap_by_max_purchases", false, nil, true)
 			if self:_setting("auto_crafter_cap_by_max_purchases", false) == true then
-				table.insert(entries, self:_entry(localize("auto_crafter_panel_max_purchases", "Max purchases"), integer_text(self:_setting("auto_crafter_max_purchases", 100)), {
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_max_purchases"), integer_text(self:_setting("auto_crafter_max_purchases", 100)), {
 					enabled = not queue_active,
 					selectable = not queue_active,
 					variant = "stepper",
@@ -2033,7 +2028,7 @@ function Panel.new(dependencies)
 					end,
 				}))
 			end
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_best_fallback", "Use closest fallback candidate weapon if exact stat match weapon is not found"), self:_planner_fallback_text(), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_best_fallback"), self:_planner_fallback_text(), {
 				checked = self:_setting("auto_crafter_best_candidate_fallback", true) == true,
 				enabled = not queue_active,
 				height = 52,
@@ -2050,7 +2045,7 @@ function Panel.new(dependencies)
 			}))
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), "", {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets"), "", {
 			selectable = true,
 			section_header = true,
 			section_id = SECTION_TRAITS,
@@ -2058,13 +2053,13 @@ function Panel.new(dependencies)
 		}))
 
 		if not self._section_collapsed[SECTION_TRAITS] then
-			local unavailable = localize("auto_crafter_panel_option_unavailable", "Enable prerequisite options")
+			local unavailable = localize("auto_crafter_panel_option_unavailable")
 			local function perk_targets_enabled()
 				return (not queue_owned or queue.state == "staged") and self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_change_perks", true) == true
 			end
-			add_target_selector("auto_crafter_perk_1_target", "auto_crafter_perk_1_target", "Perk target 1", perk_targets_enabled, unavailable)
-			add_target_selector("auto_crafter_perk_2_target", "auto_crafter_perk_2_target", "Perk target 2", perk_targets_enabled, unavailable)
-			add_checkbox("auto_crafter_show_perk_grid", "auto_crafter_show_perk_grid", "Show perk grid", true, perk_targets_enabled, true)
+			add_target_selector("auto_crafter_perk_1_target", "auto_crafter_perk_1_target", perk_targets_enabled, unavailable)
+			add_target_selector("auto_crafter_perk_2_target", "auto_crafter_perk_2_target", perk_targets_enabled, unavailable)
+			add_checkbox("auto_crafter_show_perk_grid", "auto_crafter_show_perk_grid", true, perk_targets_enabled, true)
 			if self:_setting("auto_crafter_show_perk_grid", true) == true and perk_targets_enabled() then
 				local perk_grid_options = self:_trait_target_options("auto_crafter_perk_1_target")
 
@@ -2081,9 +2076,9 @@ function Panel.new(dependencies)
 			local function blessing_targets_enabled()
 				return (not queue_owned or queue.state == "staged") and self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_change_blessings", true) == true
 			end
-			add_target_selector("auto_crafter_blessing_1_target", "auto_crafter_blessing_1_target", "Blessing target 1", blessing_targets_enabled, unavailable)
-			add_target_selector("auto_crafter_blessing_2_target", "auto_crafter_blessing_2_target", "Blessing target 2", blessing_targets_enabled, unavailable)
-			add_checkbox("auto_crafter_show_blessing_grid", "auto_crafter_show_blessing_grid", "Show blessing grid", true, blessing_targets_enabled, true)
+			add_target_selector("auto_crafter_blessing_1_target", "auto_crafter_blessing_1_target", blessing_targets_enabled, unavailable)
+			add_target_selector("auto_crafter_blessing_2_target", "auto_crafter_blessing_2_target", blessing_targets_enabled, unavailable)
+			add_checkbox("auto_crafter_show_blessing_grid", "auto_crafter_show_blessing_grid", true, blessing_targets_enabled, true)
 			if self:_setting("auto_crafter_show_blessing_grid", true) == true and blessing_targets_enabled() then
 				local blessing_grid_options = self:_trait_target_options("auto_crafter_blessing_1_target")
 
@@ -2100,7 +2095,7 @@ function Panel.new(dependencies)
 			end
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_workflow", "Crafting workflow"), "", {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_workflow"), "", {
 			selectable = true,
 			section_header = true,
 			section_id = SECTION_WORKFLOW,
@@ -2108,12 +2103,12 @@ function Panel.new(dependencies)
 		}))
 
 		if not self._section_collapsed[SECTION_WORKFLOW] then
-			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Automatically favorite crafted weapon", true, nil, true)
+			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", true, nil, true)
 			if self:_setting("auto_crafter_favorite_result", true) == true and self:_myfavorites_available() then
 				local color_values = { 1, 2, 3, 4, 5 }
 				local color_enabled = not queue_active
 
-				table.insert(entries, self:_entry(localize("auto_crafter_myfavorites_color", "MyFavorites color"), self:_myfavorites_color_text(), {
+				table.insert(entries, self:_entry(localize("auto_crafter_myfavorites_color"), self:_myfavorites_color_text(), {
 					enabled = color_enabled,
 					selectable = color_enabled,
 					variant = "stepper",
@@ -2129,7 +2124,7 @@ function Panel.new(dependencies)
 					end,
 				}))
 			end
-			table.insert(entries, self:_entry(localize("auto_crafter_buy_until_target", "Base weapon acquisition"), self:_acquisition_mode_text(), {
+			table.insert(entries, self:_entry(localize("auto_crafter_buy_until_target"), self:_acquisition_mode_text(), {
 				height = 50,
 				selectable = not queue_active,
 				variant = "acquisition_stepper",
@@ -2144,24 +2139,24 @@ function Panel.new(dependencies)
 					set_steppers_disabled(widget.content, queue_active)
 				end,
 			}))
-			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", true, function()
+			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end, nil, 44)
-			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", true)
-			add_checkbox("auto_crafter_allocate_mastery_points", "auto_crafter_allocate_mastery_points", "Allocate mastery points", true, function()
+			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", true)
+			add_checkbox("auto_crafter_allocate_mastery_points", "auto_crafter_allocate_mastery_points", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end)
-			add_checkbox("auto_crafter_consecrate_transcendent", "auto_crafter_consecrate_transcendent", "Automatically consecrate weapon to Transcendent", true, nil, nil, 44)
-			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", "Automatically upgrade weapon item level to 500", true, nil, nil, 44)
-			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", "Change perks", true, function()
+			add_checkbox("auto_crafter_consecrate_transcendent", "auto_crafter_consecrate_transcendent", true, nil, nil, 44)
+			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", true, nil, nil, 44)
+			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end)
-			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", "Change blessings", true, function()
+			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end)
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_resuming", "Resuming item options"), "", {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_resuming"), "", {
 			selectable = true,
 			section_header = true,
 			section_id = SECTION_RESUMING,
@@ -2169,14 +2164,14 @@ function Panel.new(dependencies)
 		}))
 
 		if not self._section_collapsed[SECTION_RESUMING] then
-			add_checkbox("auto_crafter_reuse_inventory_base", "auto_crafter_reuse_inventory_base", "Resume matching dump stat weapon from inventory", true, nil, nil, 44)
-			add_checkbox("auto_crafter_include_favorite_inventory_bases", "auto_crafter_include_favorite_inventory_bases", "Include favorited inventory weapons when resuming", true, function()
+			add_checkbox("auto_crafter_reuse_inventory_base", "auto_crafter_reuse_inventory_base", true, nil, nil, 44)
+			add_checkbox("auto_crafter_include_favorite_inventory_bases", "auto_crafter_include_favorite_inventory_bases", true, function()
 				return self:_setting("auto_crafter_reuse_inventory_base", true) == true
 			end, nil, 44)
-			add_checkbox("auto_crafter_craft_duplicate_completed_queued_weapons", "auto_crafter_craft_duplicate_completed_queued_weapons", "Craft duplicates of already completed queued weapons", false, nil, nil, 44)
+			add_checkbox("auto_crafter_craft_duplicate_completed_queued_weapons", "auto_crafter_craft_duplicate_completed_queued_weapons", false, nil, nil, 44)
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_estimates", "Estimates"), "", {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_estimates"), "", {
 			selectable = true,
 			section_header = true,
 			section_id = SECTION_ESTIMATES,
@@ -2184,9 +2179,9 @@ function Panel.new(dependencies)
 		}))
 
 		if not self._section_collapsed[SECTION_ESTIMATES] then
-			local function add_estimate_currency(label_id, fallback, profile_name)
+			local function add_estimate_currency(label_id, profile_name)
 				local credits, plasteel, diamantine, credits_warning, plasteel_warning, diamantine_warning = self:_estimate_currency_values(profile_name)
-				table.insert(entries, self:_entry(localize(label_id, fallback), "", {
+				table.insert(entries, self:_entry(localize(label_id), "", {
 					credits = credits,
 					credits_warning = credits_warning,
 					diamantine = diamantine,
@@ -2200,11 +2195,11 @@ function Panel.new(dependencies)
 				}))
 			end
 
-			add_estimate_currency("auto_crafter_panel_current_resources", "Current resources", "wallet")
-			add_estimate_currency("auto_crafter_panel_generous_cost", "Generous cost estimate", "generous")
-			add_estimate_currency("auto_crafter_panel_unlucky_cost", "Unlucky cost estimate", "unlucky")
-			add_estimate_currency("auto_crafter_panel_remaining_generous", "Remaining (generous)", "remaining_generous")
-			add_estimate_currency("auto_crafter_panel_remaining_unlucky", "Remaining (unlucky)", "remaining_unlucky")
+			add_estimate_currency("auto_crafter_panel_current_resources", "wallet")
+			add_estimate_currency("auto_crafter_panel_generous_cost", "generous")
+			add_estimate_currency("auto_crafter_panel_unlucky_cost", "unlucky")
+			add_estimate_currency("auto_crafter_panel_remaining_generous", "remaining_generous")
+			add_estimate_currency("auto_crafter_panel_remaining_unlucky", "remaining_unlucky")
 		end
 
 		local function run_is_active()
@@ -2212,7 +2207,7 @@ function Panel.new(dependencies)
 		end
 		local import_busy = imported and import_blocks_craft(imported)
 		local craft_enabled = not run_is_active() and not import_busy
-		local craft_label = queue_owned and self._queue_craft_armed and self:_queue_confirmation_label(queue) or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
+		local craft_label = queue_owned and self._queue_craft_armed and self:_queue_confirmation_label(queue) or localize("auto_crafter_panel_preview")
 		table.insert(entries, self:_entry(craft_label, queue_owned and self._queue_craft_armed and (self._queue_craft_confirmation_text or "Cost authority unavailable; crafting remains blocked.") or "", {
 			enabled = craft_enabled,
 			selectable = craft_enabled,
@@ -2267,12 +2262,12 @@ function Panel.new(dependencies)
 				local current_enabled = not workflow_active(self._controller_state, current_queue) and not current_import_busy
 				widget.content.enabled = current_enabled
 				widget.content.hotspot.disabled = not current_enabled
-				widget.content.label = current_owned and self._queue_craft_armed and self:_queue_confirmation_label(current_queue) or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
+				widget.content.label = current_owned and self._queue_craft_armed and self:_queue_confirmation_label(current_queue) or localize("auto_crafter_panel_preview")
 				widget.content.detail = current_owned and self._queue_craft_armed and (self._queue_craft_confirmation_text or "Cost authority unavailable; crafting remains blocked.") or ""
 			end,
 		}))
 		local stop_enabled = run_is_active()
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_stop", "> CLICK HERE TO STOP / INTERRUPT <"), "", {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_stop"), "", {
 			enabled = stop_enabled,
 			selectable = stop_enabled,
 			variant = "action",

@@ -73,7 +73,7 @@ def main() -> None:
     assert "job.mark_fallback" in source
     assert "could not be identified. Using fallback mark" in source
     assert "Incompatible profile fields were replaced with valid native choices" in source
-    assert 'notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message, true)' in source
+    assert 'notify(localize("auto_crafter_notification_title"), message, true)' in source
 
     # Import waits for one coherent native-layout/backend snapshot and checks
     # staged offer IDs again before acquiring mutation ownership.

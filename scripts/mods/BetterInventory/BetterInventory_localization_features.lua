@@ -115,14 +115,8 @@ local localization = {
 	inventory_options_controller_focus_keybind_rt = {
 		en = "[D / RT]",
 	},
-	inventory_options_controller_focus_legend = {
-		en = "Items / Widget Focus",
-	},
 	item_sorting_mod_header = {
 		en = "ItemSorting mod",
-	},
-	inventory_discard_management_inventory_label = {
-		en = "Manual/Automated Item Discard Management",
 	},
 	inventory_manual_discard_management_inventory_label = {
 		en = "Manual Item Discard Management",
@@ -378,13 +372,7 @@ local localization = {
 	automatic_curio_characters_group = {
 		en = "Characters to acquire curios:",
 	},
-	automatic_curio_characters_discovering = {
-		en = "Discovering characters... Reopen mod options shortly, or use the inventory options panel.",
-	},
 	automatic_curio_characters_discovering_inventory = {
-		en = "Discovering characters...",
-	},
-	automatic_curio_character_options_placeholder = {
 		en = "Discovering characters...",
 	},
 	automatic_curio_character_slot_placeholder = {
@@ -422,12 +410,6 @@ local localization = {
 	},
 	automatic_curio_types_inventory_label = {
 		en = "Curio types we are looking for:",
-	},
-	automatic_curio_classes_inventory_label = {
-		en = "Classes to acquire curios:",
-	},
-	automatic_curio_characters_inventory_label = {
-		en = "Characters to acquire curios:",
 	},
 	automatic_curio_health = {
 		en = "Health",
@@ -575,9 +557,6 @@ local localization = {
 	},
 	quick_discard_nothing_description = {
 		en = "No items in this inventory match the current quick-discard filters. Favorited, equipped and protected items are always excluded.",
-	},
-	quick_discard_automatic_nothing_description = {
-		en = "The automated Morningstar scan completed, but no items match the current discard filters. Favorited, equipped and protected items are always excluded.",
 	},
 	quick_discard_automatic_nothing_notification_title = {
 		en = "No items found to discard",
@@ -913,9 +892,6 @@ local localization = {
 	auto_crafter_perk_2_target = {
 		en = "Perk target 2",
 	},
-	auto_crafter_perk_target_tooltip = {
-		en = "Requires mastery-to-20 and Change perks. Choose two distinct compatible Rank IV perks from the selected weapon catalogue.",
-	},
 	auto_crafter_show_perk_grid = {
 		en = "Show perk grid",
 	},
@@ -937,35 +913,11 @@ local localization = {
 	auto_crafter_blessing_2_target = {
 		en = "Blessing target 2",
 	},
-	auto_crafter_blessing_target_tooltip = {
-		en = "Choose two distinct compatible blessings from the selected weapon family's trait sticker-book catalogue.",
-	},
 	auto_crafter_show_blessing_grid = {
 		en = "Show blessing grid",
 	},
 	auto_crafter_show_blessing_grid_tooltip = {
 		en = "Shows compatible blessings with icons in three columns. Left click assigns target 1 (yellow); right click assigns target 2 (green). Duplicate targets are prevented.",
-	},
-	auto_crafter_target_keep = {
-		en = "Keep current",
-	},
-	auto_crafter_target_auto = {
-		en = "Auto-select",
-	},
-	auto_crafter_target_auto_discovered = {
-		en = "Auto-select",
-	},
-	auto_crafter_target_auto_pending = {
-		en = "Auto-select (waiting for discovery)",
-	},
-	auto_crafter_trait_catalog_ready = {
-		en = "Perks and blessings discovered",
-	},
-	auto_crafter_trait_catalog_pending = {
-		en = "Discovering selected weapon",
-	},
-	auto_crafter_trait_catalog_failed = {
-		en = "Discovery unavailable",
 	},
 	auto_crafter_defer_bad_weapon_processing = {
 		en = "Only process bad weapons after finding perfect-rolled weapon",
@@ -991,17 +943,11 @@ local localization = {
 	auto_crafter_panel_title = {
 		en = "Auto Crafter Helper",
 	},
-	auto_crafter_panel_read_only = {
-		en = "READ-ONLY PLANNER",
-	},
 	auto_crafter_panel_status = {
 		en = "Status",
 	},
 	auto_crafter_panel_offers = {
 		en = "Offers",
-	},
-	auto_crafter_panel_wallet = {
-		en = "Resources",
 	},
 	auto_crafter_panel_gear = {
 		en = "Gear",
@@ -1015,20 +961,11 @@ local localization = {
 	auto_crafter_panel_no_target = {
 		en = "no target selected",
 	},
-	auto_crafter_panel_offer_list = {
-		en = "Weapon selection",
-	},
 	auto_crafter_panel_selected_weapon = {
 		en = "Selected weapon",
 	},
 	auto_crafter_panel_select_weapon = {
 		en = "Select a weapon in Brunt's list.",
-	},
-	auto_crafter_panel_no_offers = {
-		en = "No weapon offers exposed yet.",
-	},
-	auto_crafter_panel_more = {
-		en = "More offers available",
 	},
 	auto_crafter_panel_planner = {
 		en = "Planner configuration",
@@ -1063,21 +1000,6 @@ local localization = {
 	auto_crafter_panel_best_fallback = {
 		en = "Use closest fallback candidate weapon if exact stat match weapon is not found",
 	},
-	auto_crafter_panel_request_mode = {
-		en = "Request mode",
-	},
-	auto_crafter_panel_estimate = {
-		en = "Search budget",
-	},
-	auto_crafter_panel_consecrate_cost = {
-		en = "Profane to Transcendent",
-	},
-	auto_crafter_panel_mastery_cost = {
-		en = "Mastery fodder investment",
-	},
-	auto_crafter_panel_total_cost = {
-		en = "Known crafting investment",
-	},
 	auto_crafter_panel_current_resources = {
 		en = "Current resources",
 	},
@@ -1093,26 +1015,14 @@ local localization = {
 	auto_crafter_panel_remaining_unlucky = {
 		en = "Remaining (unlucky)",
 	},
-	auto_crafter_panel_disabled = {
-		en = "disabled",
-	},
 	auto_crafter_panel_preview = {
 		en = "> CLICK HERE TO CRAFT <",
-	},
-	auto_crafter_panel_phase_2 = {
-		en = "Redeem + sacrifice one",
-	},
-	auto_crafter_panel_phase_2_waiting = {
-		en = "No purchased candidate",
 	},
 	auto_crafter_panel_stop = {
 		en = "> CLICK HERE TO STOP / INTERRUPT <",
 	},
 	auto_crafter_panel_waiting = {
 		en = "waiting for probe",
-	},
-	auto_crafter_panel_ui_plan = {
-		en = "UI PLAN",
 	},
 	auto_crafter_panel_workflow = {
 		en = "Crafting workflow",
@@ -1125,9 +1035,6 @@ local localization = {
 	},
 	auto_crafter_panel_option_unavailable = {
 		en = "Enable prerequisite options",
-	},
-	auto_crafter_panel_advanced = {
-		en = "Advanced and safety",
 	},
 	auto_crafter_value_on = {
 		en = "On",

@@ -78,12 +78,13 @@ for index = 1, 64 do
 end
 
 -- Image-layout controls use generated IDs so weapon/Curio, view context, and
--- each column profile persist independently. DMF's schema still requires a
--- localization record for every generated setting ID even when the visible
--- widget deliberately reuses a concise shared label.
+-- each column profile persist independently. DMF titles a widget with
+-- localize(title or setting_id) and ignores a widget-level `text`, so these
+-- generated records are the labels players see; the shared image_layout_* keys
+-- named by `text` in data.lua are only registry metadata (and verify.ps1 checks).
 local image_item_kinds = { "weapon", "curio" }
 local image_contexts = {
-	{ key = "inventory", label = "Inventory and Hadron image layout", zh_cn = "库存和哈德隆图像布局" },
+	{ key = "inventory", label = "Inventory and Hadron image layout", zh_cn = "库存和海德昂图像布局" },
 	{ key = "armoury", label = "Armoury Exchange store image layout", zh_cn = "军械库交易所商店图像布局" },
 	{ key = "global_store", label = "Armoury Exchange GlobalStore image layout", zh_cn = "军械库交易所 GlobalStore 图像布局" },
 }
