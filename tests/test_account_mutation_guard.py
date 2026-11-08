@@ -160,8 +160,10 @@ def main() -> None:
 		assert(perk_arguments[1] == "gear-1" and perk_arguments[2] == 1)
 		assert(perk_arguments[3] == "perk-1" and perk_arguments[4] == false and perk_arguments[5] == 4)
 
-        local owned_ok = pcall(Guard.with_owned_call, function() error("owned failure") end)
+        local owned_ok, owned_error = pcall(Guard.with_owned_call, function() error("owned failure", 0) end)
         assert(owned_ok == false and Guard.is_owned_call() == false)
+        -- B33: the rethrow must not prefix the guard's location onto a native error.
+        assert(owned_error == "owned failure", tostring(owned_error))
 
         -- The hook inventory covers every account-writing service used by native UI,
         -- Quick Level Mastery, Auto Crafter, and BetterInventory discard automation.

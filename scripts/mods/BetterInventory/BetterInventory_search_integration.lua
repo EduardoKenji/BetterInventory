@@ -412,7 +412,7 @@ Integration.new = function(mod, dependencies)
 		invalidate = SearchIndex.invalidate,
 		invalidate_all = SearchIndex.invalidate_all,
 		mode = function()
-			return mod:get("inventory_search_non_match_behavior")
+			return mod:get("inventory_search_non_match_behavior") or "dim"
 		end,
 		new_index = new_index,
 		present = function(view, slot_filter, item_type_filter, display_name)

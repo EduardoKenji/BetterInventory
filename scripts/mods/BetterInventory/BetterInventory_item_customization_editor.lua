@@ -605,7 +605,7 @@ local function effective_name_keybind(mod)
 	-- BetterInventory owns the inventory action while its standalone editor is
 	-- enabled. Inheriting Name It's legacy Q/Y default here made Change Name and
 	-- Darktide's Add Favorite fire from the same controller button.
-	return mod:get("custom_item_name_keybind")
+	return mod:get("custom_item_name_keybind") or "lobby_open_inventory"
 end
 
 local function remove_customization_legend_entries(inputs, remove_name_it)
@@ -738,8 +738,8 @@ Editor.install = function(mod, InventoryWeaponsView, layout)
 
 			if enabled then
 				add_legend_entry(inputs, effective_name_keybind(mod), "better_inventory_change_name", "cb_on_better_inventory_change_name_pressed")
-				add_legend_entry(inputs, mod:get("custom_item_name_color_keybind"), "better_inventory_name_color", "cb_on_better_inventory_name_color_pressed")
-				add_legend_entry(inputs, mod:get("custom_item_background_color_keybind"), "better_inventory_background_color", "cb_on_better_inventory_background_color_pressed")
+				add_legend_entry(inputs, mod:get("custom_item_name_color_keybind") or "hotkey_menu_special_1", "better_inventory_name_color", "cb_on_better_inventory_name_color_pressed")
+				add_legend_entry(inputs, mod:get("custom_item_background_color_keybind") or "navigate_secondary_left_pressed", "better_inventory_background_color", "cb_on_better_inventory_background_color_pressed")
 			elseif NameIt.is_available() then
 				restore_name_it_legend_entry(inputs)
 			end

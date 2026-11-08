@@ -6,6 +6,8 @@ local ICON_STYLE_ID = "wkc_kills_icon"
 local REFRESH_STYLE_ID = "better_inventory_wkc_refresh"
 local configuration_cache = setmetatable({}, { __mode = "k" })
 local DETAIL_WIDGET_NAME = "wkc_detail_kills"
+-- Read-only stand-in for a missing WKC card configuration; a shared table keeps the material cache hitting.
+local EMPTY_CONFIGURATION = {}
 local DEFAULT_ICON = "content/ui/materials/hud/interactions/icons/enemy_priority"
 local DEFAULT_COLOR = {
 	255,
@@ -191,11 +193,18 @@ local function cached_icon_material(wkc, configuration, content)
 	end
 
 	local entry = material_cache[item]
+	-- WKC's per-instance toggle changes the icon variant without bumping _layout_gen.
+	local per_instance = false
 
-	if not entry or entry.wkc ~= wkc or entry.configuration ~= configuration then
+	if type(wkc._per_instance) == "function" then
+		local ok, flag = pcall(wkc._per_instance)
+		per_instance = ok and flag == true
+	end
+
+	if not entry or entry.wkc ~= wkc or entry.configuration ~= configuration or entry.per_instance ~= per_instance then
 		local material, scale = resolved_icon_material(wkc, configuration, content)
 
-		entry = { configuration = configuration, material = material, scale = scale, wkc = wkc }
+		entry = { configuration = configuration, material = material, scale = scale, wkc = wkc, per_instance = per_instance }
 		material_cache[item] = entry
 	end
 
@@ -541,7 +550,7 @@ local function cap_brunt_listing_overlay_sizes(item_grid, mod)
 								content[TEXT_STYLE_ID] = "0"
 							elseif style_id == ICON_STYLE_ID then
 								local current_wkc = optional_wkc()
-								local current_configuration = card_configuration(current_wkc) or {}
+								local current_configuration = card_configuration(current_wkc) or EMPTY_CONFIGURATION
 								local material = cached_icon_material(current_wkc, current_configuration, content) or DEFAULT_ICON
 
 								content[ICON_STYLE_ID] = material
@@ -645,7 +654,7 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 		value_id = REFRESH_STYLE_ID,
 		value = function(_, _, _, content)
 			local current_wkc = optional_wkc()
-			local current_configuration = card_configuration(current_wkc) or {}
+			local current_configuration = card_configuration(current_wkc) or EMPTY_CONFIGURATION
 			local kills = resolved_kills(mod, content, zero_kills_allowed(mod, configuration), current_wkc, current_configuration)
 			content.better_inventory_wkc_text_visible = kills ~= nil
 			content.better_inventory_wkc_icon_visible = kills ~= nil and current_configuration.icon_on ~= false

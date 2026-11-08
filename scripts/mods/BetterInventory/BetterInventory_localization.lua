@@ -37,6 +37,7 @@ end
 
 merge_zh_cn_shard(load_shard("BetterInventory_localization_zh_cn"))
 merge_zh_cn_shard(load_shard("BetterInventory_localization_zh_cn_search"))
+merge_zh_cn_shard(load_shard("BetterInventory_localization_zh_cn_auto_crafter"))
 
 local function gradient_text(text, start_color, end_color)
 	local characters = {}

@@ -1226,7 +1226,7 @@ local function add_inventory_sort_toggle_definition(mod, layout, definitions, vi
 	local adjusted_definitions = table.clone(definitions)
 	local scenegraph = adjusted_definitions.scenegraph_definition
 	local widget_definitions = adjusted_definitions.widget_definitions
-	local focus_action = mod:get("inventory_options_controller_focus_keybind")
+	local focus_action = mod:get("inventory_options_controller_focus_keybind") or "navigate_secondary_right_pressed"
 
 	if focus_action and focus_action ~= "off" and type(adjusted_definitions.legend_inputs) == "table" then
 		adjusted_definitions.legend_inputs[#adjusted_definitions.legend_inputs + 1] = {

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 
-SHARD_SUFFIXES = ("core", "features", "zh_cn", "zh_cn_search")
+SHARD_SUFFIXES = ("core", "features", "zh_cn", "zh_cn_search", "zh_cn_auto_crafter")
 
 
 def load_localization(lua: object, localization_path: Path) -> object:

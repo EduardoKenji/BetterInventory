@@ -17,7 +17,7 @@ LOCALIZATION_PATH = RUNTIME_ROOT / "BetterInventory_localization.lua"
 REGISTRY_PATH = RUNTIME_ROOT / "BetterInventory_settings.lua"
 LOCALIZATION_SHARD_PATHS = tuple(
     RUNTIME_ROOT / f"BetterInventory_localization_{suffix}.lua"
-    for suffix in ("core", "features", "zh_cn")
+    for suffix in ("core", "features", "zh_cn", "zh_cn_auto_crafter")
 )
 
 
