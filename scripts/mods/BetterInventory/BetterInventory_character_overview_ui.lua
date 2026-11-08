@@ -342,10 +342,6 @@ local function mark_character_overview_requirement_met(widget)
 	end
 end
 
-local function character_overview_item_content_revision(item)
-	return CharacterOverview.content_revision(item)
-end
-
 local function character_overview_item_changed(previous_item, current_item)
 	return CharacterOverview.changed(previous_item, current_item)
 end
@@ -712,17 +708,6 @@ end
 
 local function invalidate_myfavorites_grid(item_grid)
 	return FeatureDomains.markers.invalidate_grid(item_grid)
-end
-
-local function invalidate_myfavorites_view(view)
-	return invalidate_myfavorites_grid(view and view._item_grid)
-end
-
-local better_inventory_test = type(mod) == "table" and rawget(mod, "_better_inventory_test")
-
-if type(better_inventory_test) == "table" then
-	better_inventory_test.normalized_displayed_value = normalized_displayed_value
-	better_inventory_test.character_overview_item_changed = character_overview_item_changed
 end
 
 local function character_overview_curio_blueprint()
@@ -1539,12 +1524,6 @@ local function reconcile_character_overview_curio_widgets_if_needed(view, dt)
 	return reconcile_character_overview_curio_widgets(view)
 end
 
-if type(better_inventory_test) == "table" then
-	better_inventory_test.character_overview_curio_transition_type = character_overview_curio_transition_type
-	better_inventory_test.reconcile_character_overview_curio_widgets = reconcile_character_overview_curio_widgets
-	better_inventory_test.reconcile_character_overview_curio_widgets_if_needed = reconcile_character_overview_curio_widgets_if_needed
-end
-
 local function refresh_character_overview_visual_layout_if_needed(view)
 	if not view then
 		return
@@ -1707,16 +1686,6 @@ OverviewUI.release_all_views = function()
 	retire_character_overview_blueprints()
 
 	return #views
-end
-
-OverviewUI.registered_view_count = function()
-	local count = 0
-
-	for _ in pairs(registered_character_overview_views) do
-		count = count + 1
-	end
-
-	return count
 end
 
 OverviewUI.needs_update = function()
@@ -1926,25 +1895,18 @@ OverviewUI.expanded_vendor_view_definitions = expanded_vendor_view_definitions
 OverviewUI.melk_grid_configuration = melk_grid_configuration
 OverviewUI.update_expanded_vendor_dividers = update_expanded_vendor_dividers
 OverviewUI.is_hadron_view = is_hadron_view
-OverviewUI.character_overview_weapon_kind = character_overview_weapon_kind
-OverviewUI.character_overview_curio_slot = character_overview_curio_slot
 OverviewUI.pass_by_style_id = pass_by_style_id
-OverviewUI.character_overview_item_content_revision = character_overview_item_content_revision
 OverviewUI.character_overview_item_changed = character_overview_item_changed
 OverviewUI.reset_character_overview_curio_fit_state = reset_character_overview_curio_fit_state
 OverviewUI.attach_runtime_marker_styles = attach_runtime_marker_styles
 OverviewUI.character_overview_weapon_blueprint = character_overview_weapon_blueprint
 OverviewUI.character_overview_curio_blueprint = character_overview_curio_blueprint
-OverviewUI.character_overview_empty_curio_blueprint = character_overview_empty_curio_blueprint
 OverviewUI.character_overview_native_curio_equipped_marker_y = character_overview_native_curio_equipped_marker_y
 OverviewUI.synchronize_character_overview_equipped_icon = synchronize_character_overview_equipped_icon
-OverviewUI.synchronize_character_overview_equipped_icons = synchronize_character_overview_equipped_icons
 OverviewUI.character_overview_curio_transition_type = character_overview_curio_transition_type
 OverviewUI.reconcile_character_overview_curio_widgets = reconcile_character_overview_curio_widgets
 OverviewUI.reconcile_character_overview_curio_widgets_if_needed = reconcile_character_overview_curio_widgets_if_needed
-OverviewUI.reconcile_customized_loadout_widgets = reconcile_customized_loadout_widgets
 OverviewUI.refresh_character_overview_visual_layout_if_needed = refresh_character_overview_visual_layout_if_needed
 OverviewUI.invalidate_myfavorites_grid = invalidate_myfavorites_grid
-OverviewUI.invalidate_myfavorites_view = invalidate_myfavorites_view
 
 return OverviewUI
