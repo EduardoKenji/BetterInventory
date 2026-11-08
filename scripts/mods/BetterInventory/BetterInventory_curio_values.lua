@@ -113,7 +113,6 @@ end
 
 CurioValues._test = {
 	buff_value = buff_value,
-	first_description_number = first_description_number,
 }
 
 return CurioValues

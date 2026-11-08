@@ -287,10 +287,6 @@ CurioPurchase.find_offer = find_offer
 CurioPurchase.candidate_differences = candidate_differences
 CurioPurchase.same_candidate = same_candidate
 CurioPurchase._test = {
-	STABLE_REVALIDATION_FIELDS = STABLE_REVALIDATION_FIELDS,
-	VOLATILE_REVALIDATION_FIELDS = VOLATILE_REVALIDATION_FIELDS,
-	candidate_differences = candidate_differences,
-	find_offer = find_offer,
 	same_candidate = same_candidate,
 }
 

@@ -761,11 +761,8 @@ CurioStore.record_owned_candidate = record_owned_candidate
 CurioStore.store_method_for_profile = store_method_for_profile
 
 CurioStore._test = {
-	PRIMARY_TRAITS = PRIMARY_TRAITS,
-	candidate_key = candidate_key,
 	candidate_improves_owned = candidate_improves_owned,
 	curio_filter_snapshot = curio_filter_snapshot,
-	insert_owned_level = insert_owned_level,
 	normalized_offer = normalized_offer,
 	observed_rotation_boundary = observed_rotation_boundary,
 	owned_curio_policy = owned_curio_policy,

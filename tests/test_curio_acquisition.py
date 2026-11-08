@@ -822,7 +822,7 @@ def main() -> None:
             ),
         }
     )
-    assert module._test.class_is_enabled(globals_.test_mod, future_profile) is True
+    assert curio_profiles._test.class_is_enabled(globals_.test_mod, future_profile) is True
 
     # An empty backend result never persists a mode change; Characters mode
     # simply has no enabled targets until real character IDs arrive.
@@ -885,9 +885,9 @@ def main() -> None:
     # Revalidation must compare backend-stable transaction/filter fields. Storefront
     # decoration fields may legitimately change between two immediate fetches.
     rich_candidate.gear_id = "different-decoration-id"
-    assert module._test.same_candidate(candidate, rich_candidate)
+    assert curio_purchase._test.same_candidate(candidate, rich_candidate)
     rich_candidate.price = candidate.price + 1
-    assert not module._test.same_candidate(candidate, rich_candidate)
+    assert not curio_purchase._test.same_candidate(candidate, rich_candidate)
 
     globals_.health_item.traits[1].id = "toughness_trait"
     globals_.health_item.traits[1].value = 1
@@ -1173,9 +1173,9 @@ def main() -> None:
     )
     globals_.health_item.level = 410
 
-    assert len(module._test.ARCHETYPE_SETTINGS) == 0  # Lua maps have no array length.
+    assert len(curio_profiles._test.ARCHETYPE_SETTINGS) == 0  # Lua maps have no array length.
     archetype_count = lua.eval("function(values) local count = 0 for _ in pairs(values) do count = count + 1 end return count end")
-    assert archetype_count(module._test.ARCHETYPE_SETTINGS) == 7
+    assert archetype_count(curio_profiles._test.ARCHETYPE_SETTINGS) == 7
 
     # DMF validates the character rows as part of BetterInventory's static data
     # schema. The runtime hook only binds names and backend IDs; it must never add
@@ -1484,23 +1484,23 @@ def main() -> None:
     observed_storefront = lua.execute(
         "return {data = {currentRotationEnd = 1800000, catalog = {validTo = 1700000}, personal = {{price = {validTo = 1600000}}}}}"
     )
-    assert module._test.observed_rotation_boundary(observed_storefront) == 1600000
+    assert curio_store._test.observed_rotation_boundary(observed_storefront) == 1600000
 
-    compatible, boundary, missing = module._test.rotation_boundary_compatible(
+    compatible, boundary, missing = curio_store._test.rotation_boundary_compatible(
         None, 1600000, False
     )
     assert compatible is True
     assert boundary == 1600000
     assert missing is False
-    compatible, _, _ = module._test.rotation_boundary_compatible(
+    compatible, _, _ = curio_store._test.rotation_boundary_compatible(
         1600000, 1700000, False
     )
     assert compatible is False
-    compatible, _, _ = module._test.rotation_boundary_compatible(
+    compatible, _, _ = curio_store._test.rotation_boundary_compatible(
         1600000, None, False
     )
     assert compatible is False
-    compatible, boundary, missing = module._test.rotation_boundary_compatible(
+    compatible, boundary, missing = curio_store._test.rotation_boundary_compatible(
         None, None, False
     )
     assert compatible is True
@@ -1550,12 +1550,12 @@ def main() -> None:
             "spent": lua.table_from({"credits": 100, "marks": 0}),
         }
     )
-    migrated_reports = module._test.sanitize_pending_reports(
+    migrated_reports = curio_ledger._test.sanitize_pending_reports(
         None, legacy_report
     )
     assert len(migrated_reports) == 1
     assert migrated_reports[1].report_id == "legacy-report"
-    duplicate_reports = module._test.sanitize_pending_reports(
+    duplicate_reports = curio_ledger._test.sanitize_pending_reports(
         lua.table_from([legacy_report, legacy_report]), None
     )
     assert len(duplicate_reports) == 1

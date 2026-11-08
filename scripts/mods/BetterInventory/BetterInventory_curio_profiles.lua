@@ -892,10 +892,7 @@ CurioProfiles._test = {
 	character_slots = known_character_slots,
 	class_is_enabled = class_is_enabled,
 	maximum_operative_slots = maximum_operative_slots,
-	normalized_profile = profile_summary,
 	profile_is_enabled = profile_is_enabled,
-	reconcile_character_slots = reconcile_character_slots,
-	sanitize_profile_summaries = sanitize_profile_summaries,
 }
 
 return CurioProfiles

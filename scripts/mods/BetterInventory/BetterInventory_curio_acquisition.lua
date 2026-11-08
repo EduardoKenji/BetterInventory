@@ -30,18 +30,6 @@ local MAX_PENDING_REPORTS = 8
 local MAX_ERROR_TEXT_LENGTH = 1000
 local ROTATION_HISTORY_SETTING_ID = "_automatic_curio_rotation_history"
 
-local PRIMARY_TRAITS = CurioStore._test.PRIMARY_TRAITS
-
-local ARCHETYPE_SETTINGS = {
-	adamant = "automatic_curio_class_adamant",
-	broker = "automatic_curio_class_broker",
-	cryptic = "automatic_curio_class_cryptic",
-	ogryn = "automatic_curio_class_ogryn",
-	psyker = "automatic_curio_class_psyker",
-	veteran = "automatic_curio_class_veteran",
-	zealot = "automatic_curio_class_zealot",
-}
-
 local state = {
 	active_context = nil,
 	account_key = nil,
@@ -138,57 +126,6 @@ local function new_read_promise_container()
 	end
 
 	return fallback
-end
-
-if type(CurioDomains) ~= "table" or type(CurioDomains.context) ~= "table" or type(CurioDomains.context.token_matches) ~= "function" or type(CurioDomains.context.snapshot) ~= "function" or type(CurioDomains.context.matches) ~= "function" then
-	CurioDomains = {
-		context = {
-			snapshot = function(current_state)
-				return {
-					account_key = current_state and current_state.account_key,
-					context = current_state and current_state.active_context,
-					context_entry_id = current_state and current_state.context_entry_id,
-					read_request_generation = current_state and current_state.read_request_generation,
-					token = current_state and current_state.token,
-				}
-			end,
-			matches = function(snapshot, current_state)
-				return type(snapshot) == "table" and type(current_state) == "table" and snapshot.account_key == current_state.account_key and snapshot.context == current_state.active_context and snapshot.context_entry_id == current_state.context_entry_id and snapshot.read_request_generation == current_state.read_request_generation and snapshot.token == current_state.token
-			end,
-			token_matches = function(current_state, token)
-				return current_state and current_state.token == token
-			end,
-		},
-		reports = {
-			upsert_bounded = function(queue, report)
-				local result = {}
-
-				for index = 1, #(queue or {}) do
-					result[index] = queue[index]
-				end
-
-				result[#result + 1] = report
-
-				return result, true
-			end,
-			remove_head = function(queue)
-				local result = {}
-
-				for index = 2, #(queue or {}) do
-					result[#result + 1] = queue[index]
-				end
-
-				return result, queue and queue[1]
-			end,
-		},
-		scheduler = {
-			next_retry_delay = function(context, retry_delay, morningstar_delay, operative_selection_delay)
-				local base_delay = context == "operative_selection" and operative_selection_delay or morningstar_delay
-
-				return math.max((tonumber(base_delay) or 0) - (tonumber(retry_delay) or 0), 0)
-			end,
-		},
-	}
 end
 
 state.read_promise_container = new_read_promise_container()
@@ -415,10 +352,6 @@ local function sanitize_pending_report(source)
 	return CurioLedger.sanitize_pending_report(source)
 end
 
-local function sanitize_pending_reports(source, legacy_report)
-	return CurioLedger.sanitize_pending_reports(source, legacy_report)
-end
-
 local function sanitize_rotation_history(source, now)
 	return CurioLedger.sanitize_rotation_history(source, now)
 end
@@ -558,10 +491,6 @@ local function archetype_name(profile)
 	return CurioProfiles.archetype_name(profile)
 end
 
-local function class_is_enabled(mod, profile)
-	return CurioProfiles.class_is_enabled(mod, profile)
-end
-
 local function localized_class_name(profile)
 	return CurioProfiles.class_name(profile)
 end
@@ -572,18 +501,6 @@ end
 
 local function profile_label(profile)
 	return CurioProfiles.profile_label(profile)
-end
-
-local function maximum_operative_slots(mod, observed_profiles)
-	return CurioProfiles.maximum_operative_slots(mod)
-end
-
-local function known_character_slots(mod, capacity)
-	return CurioProfiles.character_slots(mod)
-end
-
-local function reconcile_character_slots(mod, summaries, confirm_absences)
-	return CurioProfiles.reconcile_character_slots(mod, summaries, confirm_absences)
 end
 
 local function cache_profiles(mod, profiles)
@@ -615,10 +532,6 @@ CurioLedger.configure({
 	server_time = server_time,
 })
 
-local function primary_trait(item)
-	return CurioStore.primary_trait(item)
-end
-
 local function normalized_offer(mod, profile, offer, diagnostics)
 	return CurioStore.normalized_offer(mod, profile, offer, diagnostics)
 end
@@ -631,24 +544,8 @@ local function fetch_storefront(profile)
 	return CurioStore.fetch_storefront(profile)
 end
 
-local function observed_rotation_boundary(storefront)
-	return CurioStore.observed_rotation_boundary(storefront)
-end
-
-local function rotation_boundary_compatible(current_boundary, observed_boundary, missing_metadata)
-	return CurioStore.rotation_boundary_compatible(current_boundary, observed_boundary, missing_metadata)
-end
-
 local function scan_candidates(mod, token, minimum_rotation_boundary_ms)
 	return CurioStore.scan_candidates(mod, token, minimum_rotation_boundary_ms, processed_offer_keys)
-end
-
-local function candidate_differences(left, right, fields)
-	return CurioPurchase.candidate_differences(left, right, fields)
-end
-
-local function same_candidate(left, right)
-	return CurioPurchase.same_candidate(left, right)
 end
 
 local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatch, on_purchase_settle)
@@ -1746,29 +1643,13 @@ CurioAcquisition.defer_for_account_operation = function(mod)
 end
 
 CurioAcquisition._test = {
-	ARCHETYPE_SETTINGS = ARCHETYPE_SETTINGS,
-	PRIMARY_TRAITS = PRIMARY_TRAITS,
 	cache_profiles = cache_profiles,
-	candidate_differences = candidate_differences,
-	candidate_key = candidate_key,
-	character_slots = known_character_slots,
-	class_is_enabled = class_is_enabled,
 	fallback_rotation_boundary = fallback_rotation_boundary,
-	maximum_operative_slots = maximum_operative_slots,
 	normalized_offer = normalized_offer,
-	observed_rotation_boundary = observed_rotation_boundary,
-	rotation_boundary_compatible = rotation_boundary_compatible,
-	primary_trait = primary_trait,
 	profile_is_enabled = profile_is_enabled,
-	reconcile_character_slots = reconcile_character_slots,
 	rotation_gate_status = rotation_gate_status,
-	sanitize_pending_reports = sanitize_pending_reports,
 	sanitize_rotation_history = sanitize_rotation_history,
 	sane_rotation_boundary = sane_rotation_boundary,
-	same_candidate = same_candidate,
-	operation_snapshot = function()
-		return state.operation_snapshot
-	end,
 }
 
 return CurioAcquisition
