@@ -485,11 +485,6 @@ EquipmentPersistence.update = function(mod, dt)
 		return
 	end
 
-	if not context_is_current(operation) then
-		retire_operation(operation)
-		return
-	end
-
 	operation.retry_elapsed = operation.retry_elapsed + (tonumber(dt) or 0)
 
 	if operation.retry_elapsed < RETRY_DELAY then
