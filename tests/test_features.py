@@ -462,10 +462,23 @@ def main() -> None:
         POLICY_PATH.read_text(encoding="utf-8"), name=str(POLICY_PATH)
     )
     lua.globals().TestDiscardPolicy = policy
+    # BetterInventory.lua owns the single FeatureDomains instance (it holds the
+    # marker state) and publishes it on the mod; Features must reuse it instead
+    # of loading a second copy. This throwaway load runs before the real one.
+    published_domains = lua.eval(
+        "(function() local copy = {} for key, value in pairs(TestFeatureDomains) do copy[key] = value end return copy end)()"
+    )
+    lua.globals().TestModLoader._feature_domains = published_domains
+    shared_features = lua.execute(
+        FEATURES_PATH.read_text(encoding="utf-8"), name=str(FEATURES_PATH)
+    )
+    assert lua.eval("rawequal")(shared_features._domains, published_domains)
+    lua.globals().TestModLoader._feature_domains = None
     features = lua.execute(
         FEATURES_PATH.read_text(encoding="utf-8"), name=str(FEATURES_PATH)
     )
     lua.globals().TestFeatures = features
+    assert lua.eval("rawequal")(features._domains, lua.globals().TestFeatureDomains)
     lua.execute(
         r"""
         TestCurioProfileSelection = {}

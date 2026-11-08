@@ -91,6 +91,8 @@ local FeatureDomains = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/
 	},
 })
 
+mod._feature_domains = FeatureDomains
+
 local Capabilities = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
 
 if type(Capabilities) ~= "table" or type(Capabilities.registry_refresh_required) ~= "function" then

@@ -80,7 +80,8 @@ local append_panel_checkbox_passes = PanelDefinitions.append_panel_checkbox_pass
 local panel_type_checkbox_passes = PanelDefinitions.panel_type_checkbox_passes
 Features._diagnostics = nil
 Features._discard_policy = DiscardPolicy
-Features._domains = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains")
+-- BetterInventory.lua publishes the single FeatureDomains instance (it owns the marker state).
+Features._domains = get_mod("BetterInventory")._feature_domains or get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains")
 
 if type(Features._domains) ~= "table" or type(Features._domains.sorting) ~= "table" or type(Features._domains.sorting.signature) ~= "function" then
 	Features._domains = {
