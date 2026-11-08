@@ -21,6 +21,16 @@ function OptionDependencies.create(context)
 
 	mod._better_inventory_option_dependency_owner = option_dependency_owner
 
+	-- Unset modes use the data.lua defaults; legacy boolean values stay as stored.
+	local HIGHLIGHT_MODE_DEFAULTS = { highlight_equipped_items = "animated_dashes", new_item_highlight_mode = "pulsing_dashes" }
+	local function highlight_mode(setting_id)
+		local mode = mod:get(setting_id)
+		if mode == nil then
+			return HIGHLIGHT_MODE_DEFAULTS[setting_id]
+		end
+		return mode
+	end
+
 	local COLOR_PRESETS = {
 		custom_tier_red = {
 			210,
@@ -102,7 +112,7 @@ function OptionDependencies.create(context)
 			prefix = "new_item_highlight_color",
 			default_preset = "green",
 			mode_default_color = function()
-				local mode = mod:get("new_item_highlight_mode")
+				local mode = highlight_mode("new_item_highlight_mode")
 
 				return (mode == "animated_dashes" or mode == "pulsing_dashes" or mode == "solid_border") and COLOR_PRESETS.gold or COLOR_PRESETS.white
 			end,
@@ -111,7 +121,7 @@ function OptionDependencies.create(context)
 			prefix = "equipped_highlight_color",
 			default_preset = "gold",
 			mode_default_color = function()
-				local mode = mod:get("highlight_equipped_items")
+				local mode = highlight_mode("highlight_equipped_items")
 
 				return (mode == "animated_dashes" or mode == "pulsing_dashes" or mode == "solid_border") and COLOR_PRESETS.gold or COLOR_PRESETS.white
 			end,
@@ -281,8 +291,8 @@ function OptionDependencies.create(context)
 
 	local function highlight_state()
 		local s = {}
-		local equipped_mode = mod:get("highlight_equipped_items")
-		local new_item_mode = mod:get("new_item_highlight_mode")
+		local equipped_mode = highlight_mode("highlight_equipped_items")
+		local new_item_mode = highlight_mode("new_item_highlight_mode")
 
 		s.equipped_enabled = equipped_mode ~= "off" and equipped_mode ~= false
 		s.equipped_glow_enabled = equipped_mode == "soft_glow" or equipped_mode == true

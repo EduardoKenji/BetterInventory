@@ -171,7 +171,7 @@ function Guard.with_owned_call(callback)
 	owned_call_depth = math.max(0, owned_call_depth - 1)
 
 	if not results[1] then
-		error(results[2])
+		error(results[2], 0)
 	end
 	observe_settlement(results[2])
 

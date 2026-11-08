@@ -1317,7 +1317,7 @@ Features.capture_inventory_options_panel_controller_focus = function(mod, layout
 		return false
 	end
 
-	local focus_action = mod:get("inventory_options_controller_focus_keybind")
+	local focus_action = mod:get("inventory_options_controller_focus_keybind") or "navigate_secondary_right_pressed"
 
 	if focus_action and focus_action ~= "off" and input_service and type(input_service.get) == "function" and input_service:get(focus_action) then
 		focused = set_inventory_options_panel_controller_focus(view, not focused)

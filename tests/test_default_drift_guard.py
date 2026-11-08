@@ -4,6 +4,10 @@ Scans `<recv>:get("id") ==/~= true|false|"str"|number`, `<recv>:get("id") or <li
 and `*setting(mod, "id", <literal>...)` calls. Dynamic IDs (`mod:get(prefix .. "_x")`,
 IDs held in variables) are NOT covered; only literal IDs can be checked mechanically.
 
+A bare `<recv>:get("id")` with no fallback or comparison on the same line reads nil
+when unset; for a string setting whose default is not "off" that is drift too, unless
+the read is a migration inspecting the raw stored value.
+
 `== L` and `~= L` both treat an unset value as "not L", so the default must differ from
 L; `or L` and `setting(.., L)` substitute L, so the default must equal L.
 """
@@ -20,6 +24,7 @@ SKIP_FILES = ("BetterInventory_data.lua",)
 LITERAL = r'(true|false|-?\d+(?:\.\d+)?|"[^"\n]*")'
 COMPARE = re.compile(r'\b\w+:get\("(\w+)"\)\s*(==|~=)\s*' + LITERAL)
 OR_FALLBACK = re.compile(r'\b\w+:get\("(\w+)"\)\s*or\s*' + LITERAL + r'(?![\w.(])')
+BARE = re.compile(r'\b\w+:get\("(\w+)"\)(?!\s*(?:or\b|==|~=|\.\.))')
 HELPER = re.compile(r'\b(?!set_|import_)\w*setting\(\s*(?:\w+\s*,\s*)?"(\w+)"\s*,\s*' + LITERAL + r'\s*[,)]')
 
 # (file, setting_id, literal) -> reason an unset value intentionally differs from data.lua.
@@ -33,6 +38,12 @@ ALLOWLIST: dict[tuple[str, str, str], str] = {
     ("BetterInventory_curio_profiles.lua", "automatic_curio_scan_operative_selection", "true"): SPENDING_GATE,
     ("BetterInventory_feature_panel_state.lua", "automatic_curio_scan_operative_selection", "true"): SPENDING_GATE,
     ("BetterInventory_feature_panel_state.lua", "automatic_curio_rescan_on_store_refresh", "true"): SPENDING_GATE,
+}
+MIGRATION = "one-time migration reads the raw stored value; nil is handled explicitly"
+BARE_ALLOWLIST: dict[tuple[str, str], str] = {
+    ("BetterInventory_runtime.lua", "auto_crafter_buy_until_target"): MIGRATION,
+    ("BetterInventory_runtime.lua", "curio_stat_compression"): MIGRATION,
+    ("BetterInventory_runtime.lua", "highlight_equipped_items"): MIGRATION,
 }
 
 
@@ -61,7 +72,7 @@ def defaults() -> dict[str, object]:
 
 def main() -> None:
     known = defaults()
-    problems, used, checked = [], set(), 0
+    problems, used, used_bare, checked = [], set(), set(), 0
 
     for path in sorted(RUNTIME_ROOT.rglob("*.lua")):
         if path.name in SKIP_FILES or "localization" in path.name:
@@ -88,8 +99,19 @@ def main() -> None:
                     problems.append(
                         f"{path.name}:{number}: {setting_id} {kind} {literal}; data.lua default is {default!r}"
                     )
+            for match in BARE.finditer(code):
+                setting_id = match.group(1)
+                default = known.get(setting_id)
+                if not isinstance(default, str) or default == "off":
+                    continue
+                checked += 1
+                key = (path.name, setting_id)
+                if key in BARE_ALLOWLIST:
+                    used_bare.add(key)
+                    continue
+                problems.append(f"{path.name}:{number}: {setting_id} read with no fallback; data.lua default is {default!r}")
 
-    stale = sorted(set(ALLOWLIST) - used)
+    stale = sorted(set(ALLOWLIST) - used) + sorted(set(BARE_ALLOWLIST) - used_bare)
     assert not problems, "code fallback drifts from data.lua:\n" + "\n".join(problems)
     assert not stale, f"stale drift allowlist entries: {stale}"
     assert checked > 100, f"drift guard matched only {checked} sites; patterns are broken"

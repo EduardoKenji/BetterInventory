@@ -16,7 +16,7 @@ def assert_no_duplicate_locale_keys() -> None:
     pattern = re.compile(r"^(?:\t|localization\.)([A-Za-z0-9_]+) = ", re.MULTILINE)
     seen: dict[str, str] = {}
 
-    for shard in ("core", "features", "zh_cn", "zh_cn_search"):
+    for shard in ("core", "features", "zh_cn", "zh_cn_search", "zh_cn_auto_crafter"):
         path = runtime / f"BetterInventory_localization_{shard}.lua"
         keys = pattern.findall(path.read_text(encoding="utf-8"))
         repeated = sorted(k for k, n in collections.Counter(keys).items() if n > 1)

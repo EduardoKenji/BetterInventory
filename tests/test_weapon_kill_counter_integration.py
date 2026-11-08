@@ -625,6 +625,17 @@ def main() -> None:
         content.item = {template_name = "combat_axe"}
         frame()
         assert(material_reads == 3 and instance_reads == 3)
+        -- WKC's per-instance toggle does not bump _layout_gen; the icon must still follow it.
+        local per_instance_setting = false
+        wkc_test_mod._per_instance = function() return per_instance_setting end
+        frame() frame()
+        assert(material_reads == 3, "an unchanged per-instance flag keeps the cache")
+        per_instance_setting = true
+        frame()
+        assert(material_reads == 4, "per-instance toggle re-resolved the icon")
+        frame()
+        assert(material_reads == 4)
+        wkc_test_mod._per_instance = nil
         -- Without a generation nothing is cached (configuration may mutate in place).
         wkc_test_mod._layout_gen = nil
         local before = material_reads

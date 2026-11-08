@@ -28,7 +28,7 @@
   ],
   "test_weapon_kill_counter_integration.py": [
     {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 549},
-    {"name": "single_pass_resolution_and_layout_generation_invalidation", "risk": "high", "start_line": 550, "end_line": 684}
+    {"name": "single_pass_resolution_and_layout_generation_invalidation", "risk": "high", "start_line": 550, "end_line": 695}
   ],
   "test_rarity_rating.py": [
     {"name": "two_profiles_split_tiers_mixed_melk_and_live_color_updates", "risk": "high", "start_line": 1, "end_line": 385}
@@ -199,8 +199,8 @@
       {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 176}
     ],
   "test_account_mutation_guard.py": [
-    {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 213},
-    {"name": "native_write_fence_across_runtime_generations", "risk": "critical", "start_line": 214, "end_line": 278}
+    {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 215},
+    {"name": "native_write_fence_across_runtime_generations", "risk": "critical", "start_line": 216, "end_line": 280}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},
@@ -337,7 +337,7 @@
     {"name": "rule_table_is_the_single_bound_list", "risk": "high", "start_line": 100, "end_line": 141}
   ],
   "test_default_drift_guard.py": [
-    {"name": "literal_id_fallbacks_match_data_lua_defaults", "risk": "high", "start_line": 1, "end_line": 100}
+    {"name": "literal_id_fallbacks_match_data_lua_defaults", "risk": "high", "start_line": 1, "end_line": 122}
   ],
   "test_highlight_builders.py": [
     {"name": "equipped_and_new_item_highlight_passes_match_pinned_golden_output", "risk": "high", "start_line": 173, "end_line": 213}

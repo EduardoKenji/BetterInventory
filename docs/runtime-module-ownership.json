@@ -2,9 +2,7 @@
   "schema_version": 1,
   "max_bytes": 100000,
   "preferred_bytes": 80000,
-  "temporary_size_exceptions": {
-    "BetterInventory_localization_zh_cn.lua": "Existing Simplified Chinese shard is 561 bytes over the staged ceiling after the v3.4.2 translated rarity-rating controls; split in the next localization-shard maintenance pass."
-  },
+  "temporary_size_exceptions": {},
   "hook_modules": {
     "BetterInventory_feature_sort_options.lua": "sort-choice-visibility-hook",
     "BetterInventory_account_mutation_guard.lua": "account-mutation-service-hooks",
@@ -102,11 +100,12 @@
     "BetterInventory_search_runtime.lua": {"category": "search-view-state-orchestrator", "risk": "high", "dependencies": []},
     "BetterInventory_search_ui.lua": {"category": "search-ui", "risk": "high", "dependencies": []},
     "BetterInventory_layout_content.lua": {"category": "ui-content-model", "risk": "high", "dependencies": []},
-    "BetterInventory_localization.lua": {"category": "declarative-entrypoint", "risk": "medium", "dependencies": ["BetterInventory_localization_core.lua", "BetterInventory_localization_features.lua", "BetterInventory_localization_zh_cn.lua", "BetterInventory_localization_zh_cn_search.lua"]},
+    "BetterInventory_localization.lua": {"category": "declarative-entrypoint", "risk": "medium", "dependencies": ["BetterInventory_localization_core.lua", "BetterInventory_localization_features.lua", "BetterInventory_localization_zh_cn.lua", "BetterInventory_localization_zh_cn_search.lua", "BetterInventory_localization_zh_cn_auto_crafter.lua"]},
     "BetterInventory_localization_core.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},
     "BetterInventory_localization_features.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},
     "BetterInventory_localization_zh_cn.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},
     "BetterInventory_localization_zh_cn_search.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},
+    "BetterInventory_localization_zh_cn_auto_crafter.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},
     "BetterInventory_option_dependencies.lua": {"category": "options-dependency-presentation", "risk": "high", "dependencies": []},
     "BetterInventory_operation_arbiter.lua": {"category": "core-state-primitive", "risk": "critical", "dependencies": []},
     "BetterInventory_profile_spawner_compatibility.lua": {"category": "ui-lifecycle-compatibility", "risk": "critical", "dependencies": []},

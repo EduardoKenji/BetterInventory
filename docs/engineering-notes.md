@@ -49,6 +49,13 @@ subclass table when the subclass is defined (`for k, v in pairs(super)`).
   - Keep every `mod:get(x) or FALLBACK` and `setting(id, FALLBACK)` equal to
     its `BetterInventory_data.lua` default. v3.8.0 fixed 9 that had drifted.
   - Tests that depend on "off" behaviour must set the setting explicitly.
+  - A bare `mod:get("id")` of a string setting (no `or`/comparison) is drift too;
+    `tests/test_default_drift_guard.py` flags it (migrations are allowlisted).
+- **Localization shards:** a new shard must be added in `BetterInventory_localization.lua`
+  and in the hardcoded lists in `tests/localization_support.py`,
+  `tests/check_schema_drift.py` and `tools/schema_manifest.py`, plus
+  `tests/coverage_policy.json` `declarative_modules`, `docs/runtime-module-ownership.json`
+  and `tests/branch_matrix.json`. Missing a loader shows up as "zh-CN missing" asserts.
 
 ### ViewElementGrid
 
