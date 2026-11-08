@@ -1206,6 +1206,21 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 	})
 end
 
+-- Character-overview blessing name fitting as (auto_fit, truncate, minimum_font_size,
+-- force_single_line, fit_font_size_bonus). Unknown values fall back to "ellipsis",
+-- the data.lua default and the only mode that cannot overflow the card.
+local function character_overview_blessing_name_fit(mod)
+	local name_mode = setting(mod, "character_overview_blessing_name_mode", "ellipsis")
+
+	if name_mode == "shrink_to_fit" then
+		return true, true, 6, true, 1
+	elseif name_mode == "two_lines" then
+		return true, false, MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE, false, 0
+	end
+
+	return false, true, MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE, true, 0
+end
+
 local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style, configuration, columns)
 	configuration = configuration or {}
 
@@ -1268,22 +1283,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local fit_font_size_bonus = 0
 
 		if configuration.character_overview then
-			local name_mode = setting(mod, "character_overview_blessing_name_mode", "ellipsis")
-
-			if name_mode == "shrink_to_fit" then
-				auto_fit_long_name = true
-				truncate_long_name = true
-				minimum_font_size = 6
-				force_single_line = true
-				fit_font_size_bonus = 1
-			elseif name_mode == "ellipsis" then
-				auto_fit_long_name = false
-				truncate_long_name = true
-				force_single_line = true
-			else
-				auto_fit_long_name = true
-				truncate_long_name = false
-			end
+			auto_fit_long_name, truncate_long_name, minimum_font_size, force_single_line, fit_font_size_bonus = character_overview_blessing_name_fit(mod)
 		end
 		local reserved_bottom_row = separate_item_level and (configuration.store_item and blessing_footer_height or item_level_row_height) or blessing_footer_height
 
@@ -1814,17 +1814,17 @@ local function apply_character_overview_blessing_name_mode(mod, widget)
 		return
 	end
 
-	local name_mode = setting(mod, "character_overview_blessing_name_mode", "ellipsis")
+	local auto_fit, truncate, minimum_font_size, force_single_line, font_size_bonus = character_overview_blessing_name_fit(mod)
 
 	for i = 1, WEAPON_BLESSING_COUNT do
 		local style = styles["better_inventory_blessing_text_" .. i]
 
 		if style then
-			style.better_inventory_auto_fit_long_name = name_mode ~= "ellipsis"
-			style.better_inventory_truncate_long_name = name_mode ~= "two_lines"
-			style.better_inventory_minimum_font_size = name_mode == "shrink_to_fit" and 6 or MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE
-			style.better_inventory_force_single_line = name_mode ~= "two_lines"
-			style.better_inventory_fit_font_size_bonus = name_mode == "shrink_to_fit" and 1 or 0
+			style.better_inventory_auto_fit_long_name = auto_fit
+			style.better_inventory_truncate_long_name = truncate
+			style.better_inventory_minimum_font_size = minimum_font_size
+			style.better_inventory_force_single_line = force_single_line
+			style.better_inventory_fit_font_size_bonus = font_size_bonus
 		end
 	end
 end

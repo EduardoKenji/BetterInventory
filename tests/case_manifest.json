@@ -273,10 +273,10 @@
     {"name": "card_geometry", "risk": "high", "start_line": 617, "end_line": 1542},
     {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1543, "end_line": 2016},
     {"name": "content_and_resource_ownership", "risk": "high", "start_line": 2017, "end_line": 3244},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3245, "end_line": 5594},
-    {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5595, "end_line": 5871},
-    {"name": "blessing_wrap_height_and_cruncher_rebind", "risk": "high", "start_line": 5872, "end_line": 5923},
-    {"name": "native_global_store_card_geometry", "risk": "critical", "start_line": 5924, "end_line": 6031}
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3245, "end_line": 5623},
+    {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5624, "end_line": 5900},
+    {"name": "blessing_wrap_height_and_cruncher_rebind", "risk": "high", "start_line": 5901, "end_line": 5952},
+    {"name": "native_global_store_card_geometry", "risk": "critical", "start_line": 5953, "end_line": 6060}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
