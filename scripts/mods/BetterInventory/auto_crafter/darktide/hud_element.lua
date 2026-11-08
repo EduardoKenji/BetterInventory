@@ -51,18 +51,21 @@ local definitions = {
 
 local HudElementBetterInventoryAutoCrafter = class("HudElementBetterInventoryAutoCrafter", "HudElementBase")
 
+local function noop() end
+local function not_matchmaking() return false end
+
 local function visible_context()
 	local managers = rawget(_G, "Managers")
 	local state = managers and managers.state
 	local game_mode = state and state.game_mode
-	local ok, mode = pcall(game_mode and game_mode.game_mode_name or function () end, game_mode)
+	local ok, mode = pcall(game_mode and game_mode.game_mode_name or noop, game_mode)
 
 	if not ok or mode ~= "hub" and mode ~= "hub_singleplay" then
 		return false
 	end
 
 	local party = managers and managers.party_immaterium
-	local matchmaking_ok, matchmaking = pcall(party and party.is_in_matchmaking or function () return false end, party)
+	local matchmaking_ok, matchmaking = pcall(party and party.is_in_matchmaking or not_matchmaking, party)
 
 	return not matchmaking_ok or matchmaking ~= true
 end

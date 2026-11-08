@@ -882,6 +882,13 @@ local function summarize_potential_base_stats(item, rolled_stats)
 	return next(summary) and summary or nil
 end
 
+local function stat_entry_less(left, right)
+	local left_key = tostring(left.display_name_key or left.name)
+	local right_key = tostring(right.display_name_key or right.name)
+
+	return left_key == right_key and left.name < right.name or left_key < right_key
+end
+
 summarize_weapon_template_stats = function(source)
 	if source == nil or type(WeaponTemplate) ~= "table" or type(WeaponTemplate.weapon_template_from_item) ~= "function" then
 		return nil
@@ -910,12 +917,7 @@ summarize_weapon_template_stats = function(source)
 		end
 	end
 
-	table.sort(summary, function (left, right)
-		local left_key = tostring(left.display_name_key or left.name)
-		local right_key = tostring(right.display_name_key or right.name)
-
-		return left_key == right_key and left.name < right.name or left_key < right_key
-	end)
+	table.sort(summary, stat_entry_less)
 
 	return #summary > 0 and summary or nil
 end
@@ -952,12 +954,7 @@ merge_stat_catalog = function(template_stats, rolled_stats)
 		end
 	end
 
-	table.sort(merged, function (left, right)
-		local left_key = tostring(left.display_name_key or left.name)
-		local right_key = tostring(right.display_name_key or right.name)
-
-		return left_key == right_key and left.name < right.name or left_key < right_key
-	end)
+	table.sort(merged, stat_entry_less)
 
 	return #merged > 0 and merged or nil
 end
@@ -1166,6 +1163,20 @@ local function summarize_blessing_catalog(sticker_book)
 	return catalog
 end
 
+local function summarize_traits(source)
+	local result = {}
+
+	for index, trait in ipairs(type(source) == "table" and source or {}) do
+		result[#result + 1] = {
+			id = safe_member(trait, "id") or safe_member(trait, "name") or safe_member(trait, "trait"),
+			index = index,
+			rarity = tonumber(safe_member(trait, "rarity") or safe_member(trait, "tier")),
+		}
+	end
+
+	return result
+end
+
 local function summarize_item(gear, gear_id)
 	local item = item_instance(gear, gear_id)
 
@@ -1212,20 +1223,6 @@ local function summarize_item(gear, gear_id)
 
 		favorite_known = ok
 		favorited = ok and value == true or false
-	end
-
-	local function summarize_traits(source)
-		local result = {}
-
-		for index, trait in ipairs(type(source) == "table" and source or {}) do
-			result[#result + 1] = {
-				id = safe_member(trait, "id") or safe_member(trait, "name") or safe_member(trait, "trait"),
-				index = index,
-				rarity = tonumber(safe_member(trait, "rarity") or safe_member(trait, "tier")),
-			}
-		end
-
-		return result
 	end
 
 	local display_name

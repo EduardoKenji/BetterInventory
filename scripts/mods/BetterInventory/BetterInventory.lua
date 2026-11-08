@@ -201,6 +201,9 @@ local function hud_read_member(object, key)
 	return object[key]
 end
 
+local function hud_noop() end
+local function hud_not_matchmaking() return false end
+
 local auto_crafter_hud_bridge = {
 	enabled = function()
 		local mod_enabled = type(mod.is_enabled) ~= "function" or mod:is_enabled()
@@ -217,7 +220,7 @@ local auto_crafter_hud_bridge = {
 		local managers = rawget(_G, "Managers")
 		local state = managers and managers.state
 		local game_mode = state and state.game_mode
-		local ok, mode = pcall(game_mode and game_mode.game_mode_name or function () end, game_mode)
+		local ok, mode = pcall(game_mode and game_mode.game_mode_name or hud_noop, game_mode)
 		local class_ok, class_name = pcall(hud_read_member, view, "__class_name")
 		local destroyed_ok, destroyed = pcall(hud_read_member, view, "_destroyed")
 		local non_hub_brunt = ok and (mode == nil or mode == "shooting_range") and class_ok and class_name == "CreditsGoodsVendorView" and (not destroyed_ok or destroyed ~= true)
@@ -227,7 +230,7 @@ local auto_crafter_hud_bridge = {
 		end
 
 		local party = managers and managers.party_immaterium
-		local matchmaking_ok, matchmaking = pcall(party and party.is_in_matchmaking or function () return false end, party)
+		local matchmaking_ok, matchmaking = pcall(party and party.is_in_matchmaking or hud_not_matchmaking, party)
 
 		return not matchmaking_ok or matchmaking ~= true
 	end,

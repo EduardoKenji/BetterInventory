@@ -389,8 +389,15 @@ local function normalized_offer(mod, profile, offer, diagnostics, filters)
 	local description = offer and offer.description
 	local offer_id = offer and offer.offerId
 	local price = offer and offer.price and offer.price.amount
+	-- The flag is read once per scan (the scan object caches it); formatting a message only to drop it is the cost avoided.
+	local logging = false
 
 	if diagnostics then
+		if diagnostics.logging == nil then
+			diagnostics.logging = mod:get("automatic_curio_diagnostic_logging") == true
+		end
+
+		logging = diagnostics.logging
 		diagnostics.offers = diagnostics.offers + 1
 	end
 
@@ -416,7 +423,7 @@ local function normalized_offer(mod, profile, offer, diagnostics, filters)
 	if not level then
 		count_exclusion(diagnostics, "unreadable_item_level")
 
-		if diagnostics then
+		if logging then
 			log_curio_evaluation(mod, profile, offer_id, level, nil, nil, "excluded: unreadable item level")
 		end
 
@@ -424,7 +431,7 @@ local function normalized_offer(mod, profile, offer, diagnostics, filters)
 	elseif level < minimum_level then
 		count_exclusion(diagnostics, "below_minimum_level")
 
-		if diagnostics then
+		if logging then
 			log_curio_evaluation(mod, profile, offer_id, level, nil, nil, "excluded: below configured minimum " .. tostring(minimum_level))
 		end
 
@@ -436,7 +443,7 @@ local function normalized_offer(mod, profile, offer, diagnostics, filters)
 	if not trait_name or not trait_config then
 		count_exclusion(diagnostics, "unsupported_primary_trait")
 
-		if diagnostics then
+		if logging then
 			log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: unsupported or unreadable primary trait")
 		end
 
@@ -448,7 +455,7 @@ local function normalized_offer(mod, profile, offer, diagnostics, filters)
 	if not primary_filter then
 		count_exclusion(diagnostics, "primary_type_disabled")
 
-		if diagnostics then
+		if logging then
 			log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: primary type disabled")
 		end
 
@@ -459,7 +466,7 @@ local function normalized_offer(mod, profile, offer, diagnostics, filters)
 		if trait_value == nil then
 			count_exclusion(diagnostics, "unreadable_primary_value")
 
-			if diagnostics then
+			if logging then
 				log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: unreadable primary value for configured roll threshold")
 			end
 
@@ -467,7 +474,7 @@ local function normalized_offer(mod, profile, offer, diagnostics, filters)
 		elseif trait_value + 0.0001 < primary_filter then
 			count_exclusion(diagnostics, "below_minimum_primary_roll")
 
-			if diagnostics then
+			if logging then
 				log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: below configured primary-roll minimum " .. tostring(primary_filter))
 			end
 
@@ -481,7 +488,7 @@ local function normalized_offer(mod, profile, offer, diagnostics, filters)
 	if not amount or amount < 0 or type(currency) ~= "string" then
 		count_exclusion(diagnostics, "invalid_price")
 
-		if diagnostics then
+		if logging then
 			log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: invalid price")
 		end
 
@@ -490,6 +497,9 @@ local function normalized_offer(mod, profile, offer, diagnostics, filters)
 
 	if diagnostics then
 		diagnostics.eligible = diagnostics.eligible + 1
+	end
+
+	if logging then
 		log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, string.format("eligible at %s %s", tostring(amount), currency))
 	end
 
@@ -619,6 +629,7 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms, process
 		local rotation_boundary_missing = false
 
 		diagnostics.profiles = #profiles
+		diagnostics.logging = mod:get("automatic_curio_diagnostic_logging") == true
 
 		for index = 1, #profiles do
 			local profile = profiles[index]
@@ -696,13 +707,15 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms, process
 							end
 						end
 
-						log_diagnostic(mod, string.format(
-							"%s storefront summary: offers=%d, Curios=%d, eligible=%d.",
-							profile_label(profile),
-							diagnostics.offers - offers_before,
-							diagnostics.curios - curios_before,
-							diagnostics.eligible - eligible_before
-						))
+						if diagnostics.logging then
+							log_diagnostic(mod, string.format(
+								"%s storefront summary: offers=%d, Curios=%d, eligible=%d.",
+								profile_label(profile),
+								diagnostics.offers - offers_before,
+								diagnostics.curios - curios_before,
+								diagnostics.eligible - eligible_before
+							))
+						end
 					end)
 					end)
 				else

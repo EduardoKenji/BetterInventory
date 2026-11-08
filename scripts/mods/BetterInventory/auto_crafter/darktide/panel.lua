@@ -112,7 +112,9 @@ local function clean_single_line(value)
 	return value
 end
 
-local function weapon_name_with_mark(display_name, mark_name)
+local weapon_name_cache, weapon_name_cache_size = {}, 0
+
+local function build_weapon_name_with_mark(display_name, mark_name)
 	local family = clean_single_line(display_name)
 	local mark = clean_single_line(mark_name)
 	mark = string.gsub(mark, "%s*[•·]%s*", " ")
@@ -126,6 +128,30 @@ local function weapon_name_with_mark(display_name, mark_name)
 	end
 
 	return mark .. " " .. family
+end
+
+-- Pure in its two strings; the Target row asks for the same pair every frame.
+local function weapon_name_with_mark(display_name, mark_name)
+	if type(display_name) ~= "string" or type(mark_name) ~= "string" then
+		return build_weapon_name_with_mark(display_name, mark_name)
+	end
+
+	local by_family = weapon_name_cache[display_name]
+	local name = by_family and by_family[mark_name]
+
+	if name == nil then
+		if weapon_name_cache_size >= 256 then
+			weapon_name_cache, weapon_name_cache_size = {}, 0
+		end
+
+		by_family = weapon_name_cache[display_name] or {}
+		weapon_name_cache[display_name] = by_family
+		name = build_weapon_name_with_mark(display_name, mark_name)
+		by_family[mark_name] = name
+		weapon_name_cache_size = weapon_name_cache_size + 1
+	end
+
+	return name
 end
 
 Panel.weapon_name_with_mark = weapon_name_with_mark
@@ -460,6 +486,7 @@ function Panel.new(dependencies)
 		_layout_defer_frames = 0,
 		_trait_catalog_key = nil,
 		_trait_options_cache = nil,
+		_currency_cache = nil,
 		_queue_signature = nil,
 		_ctrl_v_down = false,
 		_pivot_x = nil,
@@ -1308,32 +1335,50 @@ function Panel.new(dependencies)
 
 	function self:_estimate_currency_values(profile_name)
 		local plan = self._plan or {}
+		local wallet = plan.wallet
 		local estimate = plan.estimate or {}
-		local profile = profile_name == "wallet" and {
-			dockets = plan.wallet and plan.wallet.credits,
-			plasteel = plan.wallet and plan.wallet.plasteel,
-			diamantine = plan.wallet and plan.wallet.diamantine,
-		} or estimate.costs and estimate.costs[profile_name] or {}
-		local function currency_text(currency)
-			local amount = profile and tonumber(profile[currency])
+		local profile = profile_name == "wallet" and (wallet or {}) or estimate.costs and estimate.costs[profile_name] or {}
+		local credits_key, plasteel_key, diamantine_key = "dockets", "plasteel", "diamantine"
 
-			return compact_integer_text(amount, "—"), amount ~= nil and amount < 0
+		if profile_name == "wallet" then
+			credits_key = "credits"
 		end
-		local credits, credits_warning = currency_text("dockets")
-		local plasteel, plasteel_warning = currency_text("plasteel")
-		local diamantine, diamantine_warning = currency_text("diamantine")
 
-		return credits, plasteel, diamantine, credits_warning, plasteel_warning, diamantine_warning
+		local credits_amount = profile and tonumber(profile[credits_key])
+		local plasteel_amount = profile and tonumber(profile[plasteel_key])
+		local diamantine_amount = profile and tonumber(profile[diamantine_key])
+		-- Formatting depends only on these three numbers, so the refresh closures reuse the last result.
+		local cache = self._currency_cache
+		local cached = cache and cache[profile_name]
+
+		if cached and cached.credits_amount == credits_amount and cached.plasteel_amount == plasteel_amount and cached.diamantine_amount == diamantine_amount then
+			return cached[1], cached[2], cached[3], cached[4], cached[5], cached[6]
+		end
+
+		cache = cache or {}
+		self._currency_cache = cache
+		cached = {
+			credits_amount = credits_amount,
+			plasteel_amount = plasteel_amount,
+			diamantine_amount = diamantine_amount,
+			compact_integer_text(credits_amount, "—"),
+			compact_integer_text(plasteel_amount, "—"),
+			compact_integer_text(diamantine_amount, "—"),
+			credits_amount ~= nil and credits_amount < 0,
+			plasteel_amount ~= nil and plasteel_amount < 0,
+			diamantine_amount ~= nil and diamantine_amount < 0,
+		}
+		cache[profile_name] = cached
+
+		return cached[1], cached[2], cached[3], cached[4], cached[5], cached[6]
 	end
 
 	function self:_trait_target_options(setting_id)
-		local options = {}
 		local catalog = self._plan and self._plan.trait_catalog
 		local catalog_kind = string.find(setting_id, "blessing", 1, true) and "blessings" or "perks"
-		local seen = {}
 
 		if not catalog or catalog.available ~= true then
-			return options
+			return {}
 		end
 
 		-- Built once per (catalog table, kind): the refresh closures call this every frame.
@@ -1347,6 +1392,9 @@ function Panel.new(dependencies)
 		if cache[catalog_kind] then
 			return cache[catalog_kind]
 		end
+
+		local options = {}
+		local seen = {}
 
 		for _, entry in ipairs(catalog[catalog_kind] or {}) do
 			if entry.id then
@@ -2576,6 +2624,7 @@ function Panel.new(dependencies)
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil
 		self._trait_options_cache = nil
+		self._currency_cache = nil
 		self._queue_signature = nil
 		self._import_signature = nil
 		self:_disarm_queue_craft()
@@ -2628,6 +2677,7 @@ function Panel.new(dependencies)
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil
 		self._trait_options_cache = nil
+		self._currency_cache = nil
 		self._queue_signature = nil
 		self._import_signature = nil
 		self:_disarm_queue_craft()

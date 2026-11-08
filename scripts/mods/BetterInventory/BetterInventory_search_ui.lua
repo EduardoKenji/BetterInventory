@@ -297,9 +297,9 @@ SearchUI.decorate_definitions = function(definitions, view, mod, context, base_d
 	tracked_views[view] = true
 	local owned = clone(definitions)
 	owned._better_inventory_search_decorated = true
-	owned.grid_settings = clone(owned.grid_settings)
-	owned.scenegraph_definition = clone(owned.scenegraph_definition)
-	owned.widget_definitions = clone(owned.widget_definitions)
+	-- table.clone is deep, so `owned` already holds private copies of these sub-tables.
+	owned.grid_settings = type(owned.grid_settings) == "table" and owned.grid_settings or {}
+	owned.widget_definitions = type(owned.widget_definitions) == "table" and owned.widget_definitions or {}
 	local x, y, width = search_geometry(owned, view, mod)
 
 	-- Keep Darktide's title height intact. ViewElementGrid centers its title in

@@ -348,7 +348,10 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		-- on_setting_changed ignores this write: the caller rebuilds the plan itself afterwards.
+		self._setting_write_id = id
 		local ok, result = pcall(set, self._settings, id, value)
+		self._setting_write_id = nil
 
 		return ok and result ~= false
 	end
@@ -531,10 +534,13 @@ function Controller.new(dependencies)
 	end
 
 	local function pending_deferred_count(phase3)
-		local queue = phase3 and phase3.deferred_candidates or {}
-		local first = phase3 and phase3.deferred_index or 1
+		local queue = phase3 and phase3.deferred_candidates
 
-		return math.max(0, #queue - first + 1)
+		if not queue then
+			return 0
+		end
+
+		return math.max(0, #queue - (phase3.deferred_index or 1) + 1)
 	end
 
 	local function mastery_level_target_xp(data, target_level)
@@ -1233,10 +1239,13 @@ function Controller.new(dependencies)
 	end
 
 	local function fast_upgrade_pending(phase3)
-		local queue = phase3 and phase3.fast_upgrade_queue or {}
-		local head = phase3 and phase3.fast_upgrade_head or 1
+		if not phase3 then
+			return false
+		end
 
-		return phase3 and ((phase3.fast_upgrade_inflight_count or 0) > 0 or queue[head] ~= nil) or false
+		local queue = phase3.fast_upgrade_queue
+
+		return (phase3.fast_upgrade_inflight_count or 0) > 0 or queue ~= nil and queue[phase3.fast_upgrade_head or 1] ~= nil
 	end
 
 	function self:_phase3_resume_after_fast_upgrades(generation)
@@ -2592,6 +2601,10 @@ function Controller.new(dependencies)
 			stop_runs()
 			self._phase = "disabled"
 			self._plan = nil
+			return true
+		end
+
+		if setting_id == self._setting_write_id then
 			return true
 		end
 

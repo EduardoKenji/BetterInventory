@@ -1511,13 +1511,16 @@ end
 CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	local update_dt = math.max(tonumber(dt) or 0, 0)
 	local profile_work_pending = CurioProfiles.needs_update()
-	local completed_idle = state.completed
+	-- Outside any context only the fallback pass start and profile discovery timers run, and both
+	-- tolerate 1 Hz (dt is accumulated); pending discovery in a menu must not keep this per-frame.
+	local no_context = state.active_context == nil
+	local completed_idle = (state.completed or no_context)
 		and not Consecration.busy()
 		and not state.scheduled
 		and not state.started
 		and state.active_read_requests == 0
 		and state.purchase_requests_inflight == 0
-		and not profile_work_pending
+		and (no_context or not profile_work_pending)
 
 	-- Completed contexts only need rotation/report/profile maintenance at 1 Hz.
 	-- Scheduled work and every in-flight request remain frame-responsive.

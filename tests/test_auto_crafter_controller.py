@@ -1455,6 +1455,94 @@ def main() -> None:
 			assert(controller:snapshot().search.target_offer.family_mark_selection == true)
 		end
 
+		-- P26: a dump-stat replacement the controller writes itself must not
+		-- re-enter on_setting_changed and rebuild the plan a third time, while a
+		-- genuine external change of the same setting still refreshes the plan.
+		do
+			local offer = target_offer()
+			offer.base_stats = {
+				{name = "shovel_m1_damage_stat", display_name_key = "loc_stats_display_damage_stat"},
+				{name = "shovel_m1_mobility_stat", display_name_key = "loc_stats_display_mobility_stat"},
+			}
+			offer.marks = {
+				{base_stats = {{name = "shovel_m1_damage_stat", display_name_key = "loc_stats_display_damage_stat"}, {name = "shovel_m1_mobility_stat", display_name_key = "loc_stats_display_mobility_stat"}}, master_id = "weapon-1", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-1"},
+				{base_stats = {{name = "shovel_m7_damage_stat", display_name_key = "loc_stats_display_damage_stat"}, {name = "shovel_m7_mobility_stat", display_name_key = "loc_stats_display_mobility_stat"}}, master_id = "weapon-2", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-2"},
+			}
+			local snapshot = snapshot_with(nil)
+			snapshot.store.offers = {offer}
+			CurrentOffer = raw_offer("weapon-1")
+			local settings = base_settings({auto_crafter_target_dump_stat = "shovel_m1_mobility_stat"})
+			local controller
+			local plain_set = settings.set
+			-- DMF runs the setting-changed callback synchronously inside mod:set.
+			settings.set = function(self, key, value)
+				local result = plain_set(self, key, value)
+				controller:on_setting_changed(key)
+				return result
+			end
+			controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:_refresh_plan("initial_mark") == true)
+			local builds = 0
+			local real_build = Planner.build
+			Planner.build = function(...) builds = builds + 1 return real_build(...) end
+			assert(controller:select_manual_mark("offer-1", "weapon-2") == true)
+			assert(builds == 2, "replacement rebuilt the plan " .. builds .. " times")
+			assert(settings.values.auto_crafter_target_dump_stat == "shovel_m7_mobility_stat")
+			assert(controller:snapshot().plan.resolved_dump_stat == "shovel_m7_mobility_stat")
+			assert(controller._setting_write_id == nil)
+			-- The same setting changed from outside (the options menu) is not lost.
+			builds = 0
+			settings.values.auto_crafter_target_dump_stat = "shovel_m7_damage_stat"
+			assert(controller:on_setting_changed("auto_crafter_target_dump_stat") == true)
+			assert(builds == 1 and controller:snapshot().plan.resolved_dump_stat == "shovel_m7_damage_stat")
+			Planner.build = real_build
+		end
+
+		-- P15: the per-frame pending checks must not allocate when no phase exists.
+		do
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			local function find_upvalue(name)
+				for _, value in pairs(controller) do
+					if type(value) == "function" then
+						for index = 1, 80 do
+							local upvalue_name, upvalue = debug.getupvalue(value, index)
+							if upvalue_name == nil then break end
+							if upvalue_name == name then return upvalue end
+						end
+					end
+				end
+			end
+			local fast_upgrade_pending = assert(find_upvalue("fast_upgrade_pending"))
+			local pending_deferred_count = assert(find_upvalue("pending_deferred_count"))
+			assert(fast_upgrade_pending(nil) == false and fast_upgrade_pending({}) == false)
+			assert(fast_upgrade_pending({fast_upgrade_inflight_count = 1}) == true)
+			assert(fast_upgrade_pending({fast_upgrade_queue = {"a"}}) == true)
+			assert(fast_upgrade_pending({fast_upgrade_queue = {}, fast_upgrade_head = 1}) == false)
+			assert(fast_upgrade_pending({fast_upgrade_queue = {"a", "b"}, fast_upgrade_head = 3}) == false)
+			assert(fast_upgrade_pending({fast_upgrade_queue = {"a", "b"}, fast_upgrade_head = 2}) == true)
+			assert(pending_deferred_count(nil) == 0 and pending_deferred_count({}) == 0)
+			assert(pending_deferred_count({deferred_candidates = {1, 2, 3}}) == 3)
+			assert(pending_deferred_count({deferred_candidates = {1, 2, 3}, deferred_index = 3}) == 1)
+			assert(pending_deferred_count({deferred_candidates = {1}, deferred_index = 5}) == 0)
+			-- The coverage line hook allocates on every line; pause it while counting.
+			local hook, hook_mask, hook_count = debug.gethook()
+			debug.sethook()
+			collectgarbage("collect")
+			collectgarbage("stop")
+			local before = collectgarbage("count")
+			for _ = 1, 1000 do
+				fast_upgrade_pending(nil)
+				pending_deferred_count(nil)
+			end
+			local grown = collectgarbage("count") - before
+			collectgarbage("restart")
+			if hook then debug.sethook(hook, hook_mask, hook_count) end
+			assert(grown < 1, "idle pending checks allocated " .. grown .. " KB")
+		end
+
 		-- Phase 4 serially consecrates, advances 100-level milestones, allocates
 		-- a selected blessing, replaces targets, switches an explicitly selected
 		-- mark at the end, and verifies every authoritative refresh.

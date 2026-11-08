@@ -72,6 +72,30 @@ def main():
         AutoCrafterHelperHudState = nil
         Hud.update(h)
         assert(not h._visible and h._widgets_by_name.status.content.text == "")
+        -- P14: the per-frame visibility probe must not build fallback closures
+        -- when the game mode or party manager is missing.
+        AutoCrafterHelperHudState = {
+            enabled=function() return true end,
+            presentation=function() return "crafting", 6, revision end,
+        }
+        local saved_managers = Managers
+        Managers = {state = {}}
+        Hud.update(h)
+        assert(not h._visible)
+        local hook, hook_mask, hook_count = debug.gethook()
+        debug.sethook()
+        collectgarbage("collect")
+        collectgarbage("stop")
+        local before = collectgarbage("count")
+        for _ = 1, 300 do Hud.update(h) end
+        local grown = collectgarbage("count") - before
+        collectgarbage("restart")
+        if hook then debug.sethook(hook, hook_mask, hook_count) end
+        assert(grown < 1, "hidden HUD update allocated " .. grown .. " KB")
+        Managers = saved_managers
+        mode, revision = "hub", 3
+        Hud.update(h)
+        assert(h._visible)
     """)
     print("Clipboard host and real HUD lifecycle boundaries passed.")
 
