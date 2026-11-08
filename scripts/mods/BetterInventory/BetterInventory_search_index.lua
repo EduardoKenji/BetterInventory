@@ -37,7 +37,6 @@ local FINGERPRINT_PROVIDER_NAMES = {
 local ITEM_NAME_KEYS = {
 	"id",
 	"name",
-	"__master_item",
 	"master_id",
 }
 
@@ -620,6 +619,5 @@ SearchIndex.rarity_aliases = function(index)
 end
 
 SearchIndex.fingerprint = fingerprint
-SearchIndex.native_rarity_names = NATIVE_RARITY_NAMES
 
 return SearchIndex

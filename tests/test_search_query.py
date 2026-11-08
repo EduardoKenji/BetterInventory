@@ -27,12 +27,12 @@ def main() -> None:
 
     # Unicode helpers are optional and fail-soft. Non-string values normalize
     # without leaking an engine helper exception into a view.
-    assert query.normalize(123)[0] == "123"
+    assert query.normalize(123) == "123"
     lua.execute(
         "Utf8.lower = function() error('lower') end; "
         "Utf8.string_length = function() error('length') end"
     )
-    assert query.normalize("ABC")[0] == "abc"
+    assert query.normalize("ABC") == "abc"
     assert query.compile("é", lua.table_from({"max_query_characters": 1})).valid is True
     lua.execute(
         "Utf8.lower = function(value) return string.lower(value) end; "

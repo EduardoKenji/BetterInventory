@@ -55,7 +55,6 @@ local function rarity_summary(mod, candidates)
 
 	return table.concat(lines, "\n")
 end
-DiscardSummary.summary_type_name = summary_type_name
 DiscardSummary.rarity_summary = rarity_summary
 
 return DiscardSummary

@@ -73,10 +73,6 @@ Contracts.mutation = function(object, method_name, ...)
 	return invoke_method(object, method_name, ...)
 end
 
-Contracts.ui = function(object, method_name, ...)
-	return invoke_method(object, method_name, ...)
-end
-
 Contracts.registry_refresh_required = function(object, method_name, ...)
 	local status, value, detail = invoke_method(object, method_name, ...)
 

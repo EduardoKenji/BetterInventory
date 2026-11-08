@@ -404,14 +404,8 @@ Integration.is_active = function()
 end
 
 Integration._test = {
-	background_styles = BACKGROUND_STYLES,
-	current_gsc_style = current_gsc_style,
-	force_gsc_text_only = force_gsc_text_only,
-	normalize_owner = normalize_owner,
-	observe_gsc_setting_change = observe_gsc_setting_change,
 	patch_gsc_original_rarity_color = patch_gsc_original_rarity_color,
 	reconcile = reconcile,
-	restore_gsc_style = restore_gsc_style,
 	setting_ids = {
 		forced_style = FORCED_STYLE_SETTING,
 		mirror_owner = MIRROR_OWNER_SETTING,

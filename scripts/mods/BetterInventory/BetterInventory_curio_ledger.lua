@@ -443,7 +443,6 @@ CurioLedger.sanitize_pending_report = sanitize_pending_report
 CurioLedger.sanitize_pending_reports = sanitize_pending_reports
 CurioLedger.sanitize_rotation_history = sanitize_rotation_history
 CurioLedger.ensure_rotation_history = ensure_rotation_history
-CurioLedger.persist_rotation_boundary = persist_rotation_boundary
 CurioLedger.commit_rotation_boundary = commit_rotation_boundary
 CurioLedger.rotation_gate_status = rotation_gate_status
 

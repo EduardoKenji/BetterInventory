@@ -404,16 +404,11 @@ RarityRating.add_passes = function(mod, pass_template, card_width, card_height, 
 end
 
 RarityRating.MODE_OFF = MODE_OFF
-RarityRating.MODE_COMPACT = MODE_COMPACT
-RarityRating.MODE_FULL = MODE_FULL
 RarityRating.HORIZONTAL_ROW_HEIGHT = HORIZONTAL_ROW_HEIGHT
 RarityRating._test = {
 	effective_rarity = effective_rarity,
 	first_utf8_character = first_utf8_character,
-	plain_rarity_name = plain_rarity_name,
 	rarity_name = rarity_name,
-	rating_alpha = rating_alpha,
-	resolved_rating_color = resolved_rating_color,
 }
 
 return RarityRating

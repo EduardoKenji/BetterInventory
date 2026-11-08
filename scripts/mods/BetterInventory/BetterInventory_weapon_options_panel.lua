@@ -227,7 +227,6 @@ WeaponOptionsPanel.prepare_layout = function(mod, item_grid, layout, blueprints,
 end
 
 WeaponOptionsPanel.DEBUG_MARKER = DEBUG_MARKER
-WeaponOptionsPanel.MAXIMUM_VISIBLE_ROWS = MAXIMUM_VISIBLE_ROWS
 WeaponOptionsPanel.finalize_layout = finalize_grid_geometry
 
 return WeaponOptionsPanel
