@@ -83,10 +83,6 @@ function Transaction.new(operation_arbiter, callbacks)
 		return self._arbiter:current_popup()
 	end
 
-	function transaction:popup_is_active(popup_id)
-		return popup_is_active(popup_id)
-	end
-
 	function transaction:is_current(owner, token)
 		return self._arbiter:is_current(owner, token)
 	end
@@ -99,10 +95,6 @@ function Transaction.new(operation_arbiter, callbacks)
 		end
 
 		return token
-	end
-
-	function transaction:remove_popup(popup_id)
-		remove_popup(popup_id)
 	end
 
 	function transaction:set_popup(owner, token, popup_id)

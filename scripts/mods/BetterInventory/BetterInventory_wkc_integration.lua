@@ -741,7 +741,5 @@ Integration.compact_card_height_padding = compact_card_height_padding
 Integration.remove_weapon_stats_listing_overlays = remove_weapon_stats_listing_overlays
 Integration.cap_brunt_listing_overlay_sizes = cap_brunt_listing_overlay_sizes
 Integration.install_brunt_listing_hook = install_brunt_listing_hook
-Integration.TEXT_STYLE_ID = TEXT_STYLE_ID
-Integration.ICON_STYLE_ID = ICON_STYLE_ID
 
 return Integration

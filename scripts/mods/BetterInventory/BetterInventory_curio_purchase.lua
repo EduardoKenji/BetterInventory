@@ -283,8 +283,6 @@ CurioPurchase.revalidate_and_purchase = function(mod, token, captured, on_purcha
 	return revalidate_and_purchase(mod, token, captured, on_purchase_dispatch, on_purchase_settle, processed_offer_keys)
 end
 
-CurioPurchase.find_offer = find_offer
-CurioPurchase.candidate_differences = candidate_differences
 CurioPurchase.same_candidate = same_candidate
 CurioPurchase._test = {
 	same_candidate = same_candidate,

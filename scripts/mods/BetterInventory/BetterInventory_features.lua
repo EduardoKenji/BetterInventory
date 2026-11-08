@@ -1691,14 +1691,6 @@ Features.acquire_account_operation = function(owner, view)
 	return acquire_discard_transaction(owner, view)
 end
 
-Features.remove_discard_popup = function(popup_id)
-	return discard_transaction:remove_popup(popup_id)
-end
-
-Features.set_discard_popup_id = function(owner, token, popup_id)
-	return discard_transaction:set_popup(owner, token, popup_id)
-end
-
 Features.clear_discard_popup = function(owner, token)
 	return discard_transaction:clear_popup(owner, token)
 end
@@ -1729,10 +1721,6 @@ Features.account_operation_is_current = function(owner, token)
 	return discard_transaction_is_current(owner, token)
 end
 
-Features.discard_popup_is_active = function(popup_id)
-	return discard_transaction:popup_is_active(popup_id)
-end
-
 Features.reconcile_discard_transaction = function()
 	return discard_transaction:reconcile()
 end
@@ -1754,10 +1742,6 @@ local automatic_discard = AutomaticDiscard.new(discard_transaction, {
 	show_no_candidates_notification = show_automatic_no_candidates_notification,
 	show_popup = show_popup,
 })
-
-Features.clear_automatic_read_promise = function(promise)
-	return automatic_discard:clear_read_promise(promise)
-end
 
 Features.track_automatic_read_promise = function(promise)
 	return automatic_discard:track_read_promise(promise)

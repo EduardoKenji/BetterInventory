@@ -315,7 +315,6 @@ local function curio_is_protected(mod, item, level, primary_trait_name, primary_
 	return false
 end
 
-Policy.curio_is_protected = curio_is_protected
 
 local function automatic_curio_acquisition_protects(mod, item, level, primary_trait_name, primary_value)
 	if mod:get("enable_automatic_curio_acquisition") ~= true then

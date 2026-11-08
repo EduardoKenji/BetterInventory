@@ -572,15 +572,9 @@ end
 CustomTier.matches = matches
 CustomTier.reference_red = REFERENCE_RED
 CustomTier._test = {
-	curio_types = CURIO_TYPES,
-	displayed_modifier_value = displayed_modifier_value,
 	feature_active = feature_active,
 	god_stat_checker_owns_background = god_stat_checker_owns_background,
-	import_red_weapons_at_home_settings = import_red_weapons_at_home_settings,
-	preview_channels = preview_channels,
 	refresh_framework_enabled = refresh_framework_enabled,
-	weapon_modifiers_match = weapon_modifiers_match,
-	weapon_types = WEAPON_TYPES,
 }
 
 return CustomTier

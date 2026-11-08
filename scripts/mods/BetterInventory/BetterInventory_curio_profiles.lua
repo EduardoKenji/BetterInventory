@@ -884,7 +884,6 @@ CurioProfiles.profile_label = profile_label
 CurioProfiles.class_is_enabled = class_is_enabled
 CurioProfiles.profile_is_enabled = profile_is_enabled
 CurioProfiles.cache_profiles = cache_profiles
-CurioProfiles.reconcile_character_slots = reconcile_character_slots
 
 CurioProfiles._test = {
 	ARCHETYPE_SETTINGS = ARCHETYPE_SETTINGS,

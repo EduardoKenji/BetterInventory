@@ -5,6 +5,13 @@ declaration itself; member/field names excluded). Only single-line
 `local NAME = RHS` statements with side-effect-free RHS are removed: dotted
 aliases, literals, or require("scripts/...").
 usage (repo root): python tools/dead_locals.py scripts/mods/BetterInventory [--apply]
+       python tools/dead_locals.py scripts/mods/BetterInventory --exports
+
+--exports (report only) lists module-table exports (`Mod.name = ...`,
+`function Mod.name`) whose name appears in no other file of scripts/, tests/,
+tools/, docs/runtime-module-ownership.json or tests/verify.ps1. Matching is by
+whole word, so it over-approximates references (never flags a used name). A
+hit is only a candidate: check string-keyed lookups before deleting.
 
 Dry-run first; after --apply run the full suite and verify.ps1. Rerun until
 it reports total 0 (removing one local can orphan another). Dead local
@@ -46,6 +53,35 @@ def name_counts(tree):
             counts[node.id] += 1
     return counts
 
+
+def report_exports():
+    files = {}
+    for base in ("scripts", "tests", "tools"):
+        for p in glob.glob(base + "/**/*", recursive=True):
+            if p.endswith((".lua", ".py", ".ps1", ".json")):
+                files[p.replace("\\", "/")] = open(p, encoding="utf-8", errors="replace").read()
+    files["docs/runtime-module-ownership.json"] = open("docs/runtime-module-ownership.json", encoding="utf-8").read()
+    total = 0
+    for path in sorted(glob.glob(root + "/**/*.lua", recursive=True)):
+        key = path.replace("\\", "/")
+        text = files[key]
+        module = re.findall(r"^return (\w+)\s*$", text, re.M)
+        if not module:
+            continue
+        pattern = r"^(?:function %s[.:](\w+)|%s\.(\w+)\s*=)" % (module[-1], module[-1])
+        names = dict.fromkeys(a or b for a, b in re.findall(pattern, text, re.M))
+        others = [t for p, t in files.items() if p != key]
+        for name in names:
+            word = re.compile(r"\b%s\b" % re.escape(name))
+            if not any(word.search(t) for t in others):
+                total += 1
+                print(f"{key[len(root) + 1:]}: {module[-1]}.{name}")
+    print("total", total)
+
+
+if "--exports" in sys.argv:
+    report_exports()
+    sys.exit(0)
 
 total = 0
 for path in sorted(glob.glob(root + "/**/*.lua", recursive=True)):

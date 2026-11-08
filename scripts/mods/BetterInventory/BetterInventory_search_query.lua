@@ -558,7 +558,6 @@ Query.rank = function(compiled, record, matched, prioritize_equipped)
 end
 
 Query.normalize = normalize
-Query.default_rarity_aliases = ENGLISH_RARITY_ALIASES
 Query.limits = {
 	max_clauses = DEFAULT_MAX_CLAUSES,
 	max_query_bytes = DEFAULT_MAX_QUERY_BYTES,

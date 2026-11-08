@@ -627,7 +627,6 @@ EquipmentPersistence._test = {
 		return state.active
 	end,
 	capture_intent = capture_intent,
-	result_succeeded = result_succeeded,
 }
 
 return EquipmentPersistence

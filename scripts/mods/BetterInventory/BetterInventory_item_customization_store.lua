@@ -210,7 +210,6 @@ end
 Store.normalize_name = normalize_name
 Store.clone_color = clone_color
 Store.sanitize_record = sanitize_record
-Store.record_has_customization = record_has_customization
 Store.default_name_color = DEFAULT_NAME_COLOR
 Store.default_background_color = DEFAULT_BACKGROUND_COLOR
 Store.max_name_length = MAX_NAME_LENGTH

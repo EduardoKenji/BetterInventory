@@ -199,9 +199,7 @@ MaterialSafety.guard_loadout_widget = function(mod, view, widget)
 end
 
 MaterialSafety.valid_material_reference = valid_material_reference
-MaterialSafety.repair_dynamic_material = repair_dynamic_material
 MaterialSafety.guard_pass = guard_pass
-MaterialSafety.DEFAULT_TEXTURE_MATERIAL = DEFAULT_TEXTURE_MATERIAL
 MaterialSafety.INVENTORY_FRAME_MATERIAL = INVENTORY_FRAME_MATERIAL
 
 return MaterialSafety

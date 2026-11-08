@@ -752,13 +752,11 @@ CurioStore.fetch_storefront = fetch_storefront
 CurioStore.normalized_offer = normalized_offer
 CurioStore.primary_trait = primary_trait
 CurioStore.item_level = item_level
-CurioStore.offer_is_active = offer_is_active
 CurioStore.observed_rotation_boundary = observed_rotation_boundary
 CurioStore.rotation_boundary_compatible = rotation_boundary_compatible
 CurioStore.candidate_key = candidate_key
 CurioStore.candidate_improves_owned = candidate_improves_owned
 CurioStore.record_owned_candidate = record_owned_candidate
-CurioStore.store_method_for_profile = store_method_for_profile
 
 CurioStore._test = {
 	candidate_improves_owned = candidate_improves_owned,
