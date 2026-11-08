@@ -129,46 +129,72 @@ local function color_preset_options(include_mode_default)
 	return options
 end
 
+-- A color preset dropdown followed by its red/green/blue channels. Group
+-- builders embed it directly (color_group); inline blocks use splice_widgets so
+-- the four widgets land in the surrounding sub_widgets list.
+local function color_widgets(prefix, default_preset, red, green, blue, include_mode_default, preset_options, preset_tooltip)
+	local function channel(suffix, default_value)
+		return {
+			setting_id = prefix .. suffix,
+			type = "numeric",
+			default_value = default_value,
+			range = { 0, 255 },
+		}
+	end
+
+	return {
+		{
+			setting_id = prefix .. "_preset",
+			tooltip = preset_tooltip,
+			type = "dropdown",
+			default_value = default_preset,
+			options = preset_options or color_preset_options(include_mode_default),
+		},
+		channel("_r", red),
+		channel("_g", green),
+		channel("_b", blue),
+	}
+end
+
 local function color_group(group_id, prefix, default_preset, red, green, blue, include_mode_default, preset_options)
 	return {
 		setting_id = group_id,
 		type = "group",
-		sub_widgets = {
-			{
-				setting_id = prefix .. "_preset",
-				type = "dropdown",
-				default_value = default_preset,
-				options = preset_options or color_preset_options(include_mode_default),
-			},
-			{
-				setting_id = prefix .. "_r",
-				type = "numeric",
-				default_value = red,
-				range = {
-					0,
-					255,
-				},
-			},
-			{
-				setting_id = prefix .. "_g",
-				type = "numeric",
-				default_value = green,
-				range = {
-					0,
-					255,
-				},
-			},
-			{
-				setting_id = prefix .. "_b",
-				type = "numeric",
-				default_value = blue,
-				range = {
-					0,
-					255,
-				},
-			},
-		},
+		sub_widgets = color_widgets(prefix, default_preset, red, green, blue, include_mode_default, preset_options),
 	}
+end
+
+local function splice_widgets(widgets)
+	return { splice = widgets }
+end
+
+-- Replaces every { splice = {...} } marker inside a widget list with its contents.
+local function expand_splices(node)
+	if type(node) ~= "table" then
+		return node
+	end
+
+	local expanded = {}
+
+	for key, value in pairs(node) do
+		if type(key) ~= "number" then
+			expanded[key] = expand_splices(value)
+		end
+	end
+
+	for index = 1, #node do
+		local value = node[index]
+
+		if type(value) == "table" and value.splice then
+			for splice_index = 1, #value.splice do
+				expanded[#expanded + 1] = expand_splices(value.splice[splice_index])
+			end
+		else
+			expanded[#expanded + 1] = expand_splices(value)
+		end
+	end
+
+	return expanded
 end
 
 local function custom_tier_color_options()
@@ -441,7 +467,7 @@ local function image_layout_section(item_kind, section_id)
 	}
 end
 
-return {
+return expand_splices({
 	name = mod:localize("mod_name"),
 	description = mod:localize("mod_description"),
 	version = MOD_VERSION,
@@ -802,10 +828,7 @@ return {
 						tooltip = "quick_discard_max_item_level_tooltip",
 						type = "numeric",
 						default_value = 490,
-						range = {
-							0,
-							500,
-						},
+						range = { 0, 500 },
 					},
 					{
 						setting_id = "quick_discard_protect_above_equipped_level",
@@ -830,10 +853,7 @@ return {
 						tooltip = "quick_discard_curio_health_roll_tooltip",
 						type = "numeric",
 						default_value = 21,
-						range = {
-							0,
-							21,
-						},
+						range = { 0, 21 },
 					},
 					{
 						setting_id = "quick_discard_protect_toughness_roll_curios",
@@ -846,10 +866,7 @@ return {
 						tooltip = "quick_discard_curio_toughness_roll_tooltip",
 						type = "numeric",
 						default_value = 17,
-						range = {
-							0,
-							17,
-						},
+						range = { 0, 17 },
 					},
 					{
 						setting_id = "quick_discard_protect_high_level_curios",
@@ -862,10 +879,7 @@ return {
 						tooltip = "quick_discard_curio_protection_level_tooltip",
 						type = "numeric",
 						default_value = 410,
-						range = {
-							0,
-							500,
-						},
+						range = { 0, 500 },
 					},
 					{
 						setting_id = "quick_discard_keep_health_curios",
@@ -956,20 +970,14 @@ return {
 								tooltip = "automatic_curio_min_item_level_tooltip",
 								type = "numeric",
 								default_value = 410,
-								range = {
-									0,
-									500,
-								},
+								range = { 0, 500 },
 							},
 							{
 								setting_id = "automatic_curio_owned_target_per_stat",
 								tooltip = "automatic_curio_owned_target_per_stat_tooltip",
 								type = "numeric",
 								default_value = 3,
-								range = {
-									0,
-									10,
-								},
+								range = { 0, 10 },
 							},
 							{
 								setting_id = "automatic_curio_diagnostic_logging",
@@ -1013,10 +1021,7 @@ return {
 												tooltip = "automatic_curio_min_health_tooltip",
 												type = "numeric",
 												default_value = 21,
-												range = {
-													0,
-													21,
-												},
+												range = { 0, 21 },
 											},
 										},
 									},
@@ -1030,10 +1035,7 @@ return {
 												tooltip = "automatic_curio_min_toughness_tooltip",
 												type = "numeric",
 												default_value = 17,
-												range = {
-													0,
-													17,
-												},
+												range = { 0, 17 },
 											},
 										},
 									},
@@ -1047,10 +1049,7 @@ return {
 												tooltip = "automatic_curio_min_stamina_tooltip",
 												type = "numeric",
 												default_value = 3,
-												range = {
-													0,
-													3,
-												},
+												range = { 0, 3 },
 											},
 										},
 									},
@@ -1176,10 +1175,7 @@ return {
 						tooltip = "auto_crafter_dump_stat_target_tooltip",
 						type = "numeric",
 						default_value = 60,
-						range = {
-							1,
-							100,
-						},
+						range = { 1, 100 },
 					},
 					{
 						setting_id = "auto_crafter_dump_stat_comparison",
@@ -1243,10 +1239,7 @@ return {
 						tooltip = "auto_crafter_docket_cap_tooltip",
 						type = "numeric",
 						default_value = 500000,
-						range = {
-							0,
-							10000000,
-						},
+						range = { 0, 10000000 },
 					},
 					{
 						setting_id = "auto_crafter_docket_cap_includes_mastery",
@@ -1265,10 +1258,7 @@ return {
 						tooltip = "auto_crafter_max_purchases_tooltip",
 						type = "numeric",
 						default_value = 100,
-						range = {
-							1,
-							10000,
-						},
+						range = { 1, 10000 },
 					},
 					{
 						setting_id = "auto_crafter_best_candidate_fallback",
@@ -1419,10 +1409,7 @@ return {
 								tooltip = "three_column_weapon_name_font_size_tooltip",
 								type = "numeric",
 								default_value = 14,
-								range = {
-									10,
-									20,
-								},
+								range = { 10, 20 },
 							},
 							{
 								setting_id = "expand_armoury_requisition_window",
@@ -1435,10 +1422,7 @@ return {
 								tooltip = "armoury_requisition_target_card_width_tooltip",
 								type = "numeric",
 								default_value = 230,
-								range = {
-									190,
-									230,
-								},
+								range = { 190, 230 },
 							},
 						},
 					},
@@ -1499,50 +1483,35 @@ return {
 								tooltip = "global_store_character_photo_size_percent_tooltip",
 								type = "numeric",
 								default_value = 110,
-								range = {
-									50,
-									125,
-								},
+								range = { 50, 125 },
 							},
 							{
 								setting_id = "global_store_price_row_padding",
 								tooltip = "global_store_price_row_padding_tooltip",
 								type = "numeric",
 								default_value = 10,
-								range = {
-									5,
-									20,
-								},
+								range = { 5, 20 },
 							},
 													{
 														setting_id = "global_store_character_info_gap",
 														tooltip = "global_store_character_info_gap_tooltip",
 														type = "numeric",
 								default_value = 5,
-														range = {
-															0,
-															40,
-														},
+														range = { 0, 40 },
 													},
 													{
 														setting_id = "global_store_character_class_icon_size",
 														tooltip = "global_store_character_class_icon_size_tooltip",
 														type = "numeric",
 														default_value = 16,
-														range = {
-															8,
-															24,
-														},
+														range = { 8, 24 },
 													},
 													{
 														setting_id = "global_store_character_name_font_size",
 														tooltip = "global_store_character_name_font_size_tooltip",
 														type = "numeric",
 														default_value = 16,
-														range = {
-															8,
-															20,
-														},
+														range = { 8, 20 },
 													},
 							{
 									setting_id = "global_store_compact_character_names",
@@ -1555,20 +1524,14 @@ return {
 									tooltip = "global_store_single_column_modifier_horizontal_position_tooltip",
 									type = "numeric",
 									default_value = 55,
-									range = {
-										0,
-										100,
-									},
+									range = { 0, 100 },
 								},
 								{
 									setting_id = "global_store_single_column_modifier_vertical_position",
 									tooltip = "global_store_single_column_modifier_vertical_position_tooltip",
 									type = "numeric",
 									default_value = 100,
-									range = {
-										0,
-										100,
-									},
+									range = { 0, 100 },
 								},
 						},
 					},
@@ -1643,55 +1606,16 @@ return {
 								tooltip = "character_overview_dump_stat_horizontal_offset_tooltip",
 								type = "numeric",
 								default_value = -10,
-								range = {
-									-300,
-									300,
-								},
+								range = { -300, 300 },
 							},
 							{
 								setting_id = "character_overview_dump_stat_font_scale_percent",
 								tooltip = "character_overview_dump_stat_font_scale_percent_tooltip",
 								type = "numeric",
 								default_value = 130,
-								range = {
-									50,
-									200,
-								},
+								range = { 50, 200 },
 							},
-							{
-								setting_id = "character_overview_dump_stat_color_preset",
-								tooltip = "character_overview_dump_stat_color_preset_tooltip",
-								type = "dropdown",
-								default_value = "pink",
-								options = color_preset_options(),
-							},
-							{
-								setting_id = "character_overview_dump_stat_color_r",
-								type = "numeric",
-								default_value = 255,
-								range = {
-									0,
-									255,
-								},
-							},
-							{
-								setting_id = "character_overview_dump_stat_color_g",
-								type = "numeric",
-								default_value = 94,
-								range = {
-									0,
-									255,
-								},
-							},
-							{
-								setting_id = "character_overview_dump_stat_color_b",
-								type = "numeric",
-								default_value = 132,
-								range = {
-									0,
-									255,
-								},
-							},
+							splice_widgets(color_widgets("character_overview_dump_stat_color", "pink", 255, 94, 132, nil, nil, "character_overview_dump_stat_color_preset_tooltip")),
 							{
 								setting_id = "enable_character_overview_curio_details",
 								tooltip = "enable_character_overview_curio_details_tooltip",
@@ -1746,10 +1670,7 @@ return {
 								tooltip = "character_overview_curio_font_size_percent_tooltip",
 								type = "numeric",
 								default_value = 110,
-								range = {
-									50,
-									150,
-								},
+								range = { 50, 150 },
 							},
 						},
 					},
@@ -1770,30 +1691,21 @@ return {
 						tooltip = "melee_columns_tooltip",
 						type = "numeric",
 						default_value = 3,
-						range = {
-							2,
-							5,
-						},
+						range = { 2, 5 },
 					},
 					{
 						setting_id = "ranged_columns",
 						tooltip = "ranged_columns_tooltip",
 						type = "numeric",
 						default_value = 3,
-						range = {
-							2,
-							5,
-						},
+						range = { 2, 5 },
 					},
 					{
 						setting_id = "curio_columns",
 						tooltip = "curio_columns_tooltip",
 						type = "numeric",
 						default_value = 3,
-						range = {
-							2,
-						5,
-						},
+						range = { 2, 5 },
 					},
 					{
 						setting_id = "expand_inventory_window",
@@ -1822,10 +1734,7 @@ return {
 						tooltip = "five_column_weapon_extra_width_tooltip",
 						type = "numeric",
 						default_value = 80,
-						range = {
-							0,
-							120,
-						},
+						range = { 0, 120 },
 					},
 					{
 						setting_id = "expand_curio_inventory_window",
@@ -1838,19 +1747,13 @@ return {
 						tooltip = "curio_target_card_width_tooltip",
 						type = "numeric",
 						default_value = 190,
-						range = {
-							120,
-							220,
-						},
+						range = { 120, 220 },
 					},
 					{
 						setting_id = "grid_spacing",
 						type = "numeric",
 						default_value = 10,
-						range = {
-							0,
-							40,
-						},
+						range = { 0, 40 },
 					},
 					{
 						setting_id = "automatic_card_height",
@@ -1863,19 +1766,13 @@ return {
 						tooltip = "card_height_tooltip",
 						type = "numeric",
 						default_value = 110,
-						range = {
-							110,
-							240,
-						},
+						range = { 110, 240 },
 					},
 					{
 						setting_id = "icon_darkness",
 						type = "numeric",
 						default_value = 25,
-						range = {
-							0,
-							85,
-						},
+						range = { 0, 85 },
 					},
 				},
 			},
@@ -1890,10 +1787,7 @@ return {
 						tooltip = "single_column_weapon_name_font_size_tooltip",
 						type = "numeric",
 						default_value = 20,
-						range = {
-							10,
-							24,
-						},
+						range = { 10, 24 },
 					},
 					{
 						setting_id = "single_column_blessing_icons_on_right",
@@ -2011,40 +1905,28 @@ return {
 						tooltip = "quick_look_card_single_column_font_size_tooltip",
 						type = "numeric",
 						default_value = 14,
-						range = {
-							8,
-							20,
-						},
+						range = { 8, 20 },
 					},
 					{
 						setting_id = "quick_look_card_single_column_label_value_gap",
 						tooltip = "quick_look_card_single_column_label_value_gap_tooltip",
 						type = "numeric",
 						default_value = 1,
-						range = {
-							0,
-							16,
-						},
+						range = { 0, 16 },
 					},
 					{
 						setting_id = "quick_look_card_single_column_horizontal_position",
 						tooltip = "quick_look_card_single_column_horizontal_position_tooltip",
 						type = "numeric",
 						default_value = 79,
-						range = {
-							0,
-							100,
-						},
+						range = { 0, 100 },
 					},
 					{
 						setting_id = "quick_look_card_single_column_vertical_position",
 						tooltip = "quick_look_card_single_column_vertical_position_tooltip",
 						type = "numeric",
 						default_value = 93,
-						range = {
-							0,
-							100,
-						},
+						range = { 0, 100 },
 					},
 					{
 						setting_id = "enable_quick_look_card_grid_integration",
@@ -2077,64 +1959,22 @@ return {
 						tooltip = "quick_look_card_grid_font_size_tooltip",
 						type = "numeric",
 						default_value = 13,
-						range = {
-							8,
-							20,
-						},
+						range = { 8, 20 },
 					},
 					{
 						setting_id = "quick_look_card_grid_bottom_padding",
 						tooltip = "quick_look_card_grid_bottom_padding_tooltip",
 						type = "numeric",
 						default_value = 26,
-						range = {
-							20,
-							60,
-						},
+						range = { 20, 60 },
 					},
-					{
-						setting_id = "weapon_modifier_lowest_color_preset",
-						tooltip = "weapon_modifier_lowest_color_preset_tooltip",
-						type = "dropdown",
-						default_value = "pink",
-						options = color_preset_options(),
-					},
-					{
-						setting_id = "weapon_modifier_lowest_color_r",
-						type = "numeric",
-						default_value = 255,
-						range = {
-							0,
-							255,
-						},
-					},
-					{
-						setting_id = "weapon_modifier_lowest_color_g",
-						type = "numeric",
-						default_value = 94,
-						range = {
-							0,
-							255,
-						},
-					},
-					{
-						setting_id = "weapon_modifier_lowest_color_b",
-						type = "numeric",
-						default_value = 132,
-						range = {
-							0,
-							255,
-						},
-					},
+					splice_widgets(color_widgets("weapon_modifier_lowest_color", "pink", 255, 94, 132, nil, nil, "weapon_modifier_lowest_color_preset_tooltip")),
 					{
 						setting_id = "weapon_modifier_lowest_color_opacity",
 						tooltip = "weapon_modifier_lowest_color_opacity_tooltip",
 						type = "numeric",
 						default_value = 80,
-						range = {
-							0,
-							100,
-						},
+						range = { 0, 100 },
 					},
 				},
 			},
@@ -2257,10 +2097,7 @@ return {
 						tooltip = "weapon_rarity_rating_opacity_tooltip",
 						type = "numeric",
 						default_value = 100,
-						range = {
-							0,
-							100,
-						},
+						range = { 0, 100 },
 					},
 					{
 						setting_id = "show_rarity_tag",
@@ -2332,83 +2169,36 @@ return {
 						tooltip = "weapon_blessing_text_vertical_spacing_tooltip",
 						type = "numeric",
 						default_value = 2,
-						range = {
-							0,
-							20,
-						},
+						range = { 0, 20 },
 					},
 					{
 						setting_id = "weapon_blessing_text_bottom_padding",
 						tooltip = "weapon_blessing_text_bottom_padding_tooltip",
 						type = "numeric",
 						default_value = 4,
-						range = {
-							0,
-							20,
-						},
+						range = { 0, 20 },
 					},
-					{
-						setting_id = "weapon_blessing_text_color_preset",
-						type = "dropdown",
-						default_value = "light_blue",
-						options = color_preset_options(),
-					},
-					{
-						setting_id = "weapon_blessing_text_color_r",
-						type = "numeric",
-						default_value = 105,
-						range = {
-							0,
-							255,
-						},
-					},
-					{
-						setting_id = "weapon_blessing_text_color_g",
-						type = "numeric",
-						default_value = 200,
-						range = {
-							0,
-							255,
-						},
-					},
-					{
-						setting_id = "weapon_blessing_text_color_b",
-						type = "numeric",
-						default_value = 235,
-						range = {
-							0,
-							255,
-						},
-					},
+					splice_widgets(color_widgets("weapon_blessing_text_color", "light_blue", 105, 200, 235)),
 					{
 						setting_id = "weapon_blessing_text_opacity",
 						tooltip = "weapon_blessing_text_opacity_tooltip",
 						type = "numeric",
 						default_value = 80,
-						range = {
-							0,
-							100,
-						},
+						range = { 0, 100 },
 					},
 					{
 						setting_id = "blessing_icon_size",
 						tooltip = "blessing_icon_size_tooltip",
 						type = "numeric",
 						default_value = 36,
-						range = {
-							20,
-							48,
-						},
+						range = { 20, 48 },
 					},
 					{
 						setting_id = "blessing_icon_spacing",
 						tooltip = "blessing_icon_spacing_tooltip",
 						type = "numeric",
 						default_value = 3,
-						range = {
-							0,
-							20,
-						},
+						range = { 0, 20 },
 					},
 					{
 						setting_id = "show_weapon_perks",
@@ -2447,10 +2237,7 @@ return {
 						tooltip = "weapon_perk_rank_icon_size_tooltip",
 						type = "numeric",
 						default_value = 17,
-						range = {
-							12,
-							32,
-						},
+						range = { 12, 32 },
 					},
 					{
 						setting_id = "remove_weapon_perk_plus_signs",
@@ -2458,68 +2245,27 @@ return {
 						type = "checkbox",
 						default_value = false,
 					},
-					{
-						setting_id = "weapon_perk_text_color_preset",
-						type = "dropdown",
-						default_value = "light_green",
-						options = color_preset_options(),
-					},
-					{
-						setting_id = "weapon_perk_text_color_r",
-						type = "numeric",
-						default_value = 190,
-						range = {
-							0,
-							255,
-						},
-					},
-					{
-						setting_id = "weapon_perk_text_color_g",
-						type = "numeric",
-						default_value = 210,
-						range = {
-							0,
-							255,
-						},
-					},
-					{
-						setting_id = "weapon_perk_text_color_b",
-						type = "numeric",
-						default_value = 180,
-						range = {
-							0,
-							255,
-						},
-					},
+					splice_widgets(color_widgets("weapon_perk_text_color", "light_green", 190, 210, 180)),
 					{
 						setting_id = "weapon_perk_text_opacity",
 						tooltip = "weapon_perk_text_opacity_tooltip",
 						type = "numeric",
 						default_value = 80,
-						range = {
-							0,
-							100,
-						},
+						range = { 0, 100 },
 					},
 					{
 						setting_id = "weapon_perk_vertical_spacing",
 						tooltip = "weapon_perk_vertical_spacing_tooltip",
 						type = "numeric",
 						default_value = 2,
-						range = {
-							0,
-							20,
-						},
+						range = { 0, 20 },
 					},
 					{
 						setting_id = "weapon_perk_blessing_spacing",
 						tooltip = "weapon_perk_blessing_spacing_tooltip",
 						type = "numeric",
 						default_value = 5,
-						range = {
-							0,
-							20,
-						},
+						range = { 0, 20 },
 					},
 					{
 						setting_id = "compact_favorite_marker",
@@ -2546,38 +2292,26 @@ return {
 						setting_id = "item_name_font_size",
 						type = "numeric",
 						default_value = 16,
-						range = {
-							10,
-							24,
-						},
+						range = { 10, 24 },
 					},
 					{
 						setting_id = "minimum_item_name_font_size",
 						tooltip = "minimum_item_name_font_size_tooltip",
 						type = "numeric",
 						default_value = 12,
-						range = {
-							8,
-							20,
-						},
+						range = { 8, 20 },
 					},
 					{
 						setting_id = "secondary_text_font_size",
 						type = "numeric",
 						default_value = 13,
-						range = {
-							8,
-							20,
-						},
+						range = { 8, 20 },
 					},
 					{
 						setting_id = "expertise_font_size",
 						type = "numeric",
 						default_value = 20,
-						range = {
-							10,
-							28,
-						},
+						range = { 10, 28 },
 					},
 					{
 						setting_id = "show_item_level_icon",
@@ -2622,64 +2356,23 @@ return {
 								tooltip = "equipped_highlight_glow_intensity_tooltip",
 								type = "numeric",
 								default_value = 100,
-								range = {
-									0,
-									100,
-								},
+								range = { 0, 100 },
 							},
 							{
 								setting_id = "equipped_highlight_animated_border_width",
 								tooltip = "equipped_highlight_animated_border_width_tooltip",
 								type = "numeric",
 								default_value = 2,
-								range = {
-									1,
-									5,
-								},
+								range = { 1, 5 },
 							},
 							{
 								setting_id = "equipped_highlight_solid_border_width",
 								tooltip = "equipped_highlight_solid_border_width_tooltip",
 								type = "numeric",
 								default_value = 2,
-								range = {
-									1,
-									5,
-								},
+								range = { 1, 5 },
 							},
-							{
-								setting_id = "equipped_highlight_color_preset",
-								type = "dropdown",
-								default_value = "gold",
-								options = color_preset_options(true),
-							},
-							{
-								setting_id = "equipped_highlight_color_r",
-								type = "numeric",
-								default_value = 250,
-								range = {
-									0,
-									255,
-								},
-							},
-							{
-								setting_id = "equipped_highlight_color_g",
-								type = "numeric",
-								default_value = 189,
-								range = {
-									0,
-									255,
-								},
-							},
-							{
-								setting_id = "equipped_highlight_color_b",
-								type = "numeric",
-								default_value = 73,
-								range = {
-									0,
-									255,
-								},
-							},
+							splice_widgets(color_widgets("equipped_highlight_color", "gold", 250, 189, 73, true)),
 						},
 					},
 					{
@@ -2735,64 +2428,23 @@ return {
 								tooltip = "new_item_highlight_glow_intensity_tooltip",
 								type = "numeric",
 								default_value = 100,
-								range = {
-									0,
-									100,
-								},
+								range = { 0, 100 },
 							},
 							{
 								setting_id = "new_item_highlight_animated_border_width",
 								tooltip = "new_item_highlight_animated_border_width_tooltip",
 								type = "numeric",
 								default_value = 2,
-								range = {
-									1,
-									5,
-								},
+								range = { 1, 5 },
 							},
 							{
 								setting_id = "new_item_highlight_solid_border_width",
 								tooltip = "new_item_highlight_solid_border_width_tooltip",
 								type = "numeric",
 								default_value = 2,
-								range = {
-									1,
-									5,
-								},
+								range = { 1, 5 },
 							},
-							{
-								setting_id = "new_item_highlight_color_preset",
-								type = "dropdown",
-								default_value = "green",
-								options = color_preset_options(true),
-							},
-							{
-								setting_id = "new_item_highlight_color_r",
-								type = "numeric",
-								default_value = 105,
-								range = {
-									0,
-									255,
-								},
-							},
-							{
-								setting_id = "new_item_highlight_color_g",
-								type = "numeric",
-								default_value = 210,
-								range = {
-									0,
-									255,
-								},
-							},
-							{
-								setting_id = "new_item_highlight_color_b",
-								type = "numeric",
-								default_value = 120,
-								range = {
-									0,
-									255,
-								},
-							},
+							splice_widgets(color_widgets("new_item_highlight_color", "green", 105, 210, 120, true)),
 						},
 					},
 				},
@@ -2875,10 +2527,7 @@ return {
 						tooltip = "curio_rarity_rating_opacity_tooltip",
 						type = "numeric",
 						default_value = 100,
-						range = {
-							0,
-							100,
-						},
+						range = { 0, 100 },
 					},
 					{
 						setting_id = "show_curio_item_level",
@@ -2891,30 +2540,21 @@ return {
 						tooltip = "curio_primary_stat_font_size_tooltip",
 						type = "numeric",
 						default_value = 16,
-						range = {
-							9,
-							20,
-						},
+						range = { 9, 20 },
 					},
 					{
 						setting_id = "curio_secondary_stat_font_size",
 						tooltip = "curio_secondary_stat_font_size_tooltip",
 						type = "numeric",
 						default_value = 13,
-						range = {
-							9,
-							20,
-						},
+						range = { 9, 20 },
 					},
 					{
 						setting_id = "curio_primary_secondary_spacing",
 						tooltip = "curio_primary_secondary_spacing_tooltip",
 						type = "numeric",
 						default_value = 5,
-						range = {
-							0,
-							20,
-						},
+						range = { 0, 20 },
 					},
 					{
 						setting_id = "show_curio_quality",
@@ -3019,10 +2659,7 @@ return {
 						tooltip = "debug_armoury_requisition_window_increase_percent_tooltip",
 						type = "numeric",
 						default_value = 30,
-						range = {
-							10,
-							100,
-						},
+						range = { 10, 100 },
 					},
 					{
 						setting_id = "debug_adjust_inventory_window_width",
@@ -3035,10 +2672,7 @@ return {
 						tooltip = "debug_inventory_window_width_adjustment_percent_tooltip",
 						type = "numeric",
 						default_value = 30,
-						range = {
-							-50,
-							100,
-						},
+						range = { -50, 100 },
 					},
 					{
 						setting_id = "debug_adjust_global_store_window_width",
@@ -3051,13 +2685,10 @@ return {
 						tooltip = "debug_global_store_window_width_adjustment_percent_tooltip",
 						type = "numeric",
 						default_value = 30,
-						range = {
-							-50,
-							100,
-						},
+						range = { -50, 100 },
 					},
 				},
 			},
 		},
 	},
-}
+})

@@ -2767,7 +2767,7 @@ def main() -> None:
     # A raw _G lookup therefore misses Application and leaves alpha at 15%.
     cards_source = LAYOUT_CARDS_PATH.read_text(encoding="utf-8")
     animation_source = cards_source.split("local PULSING_DASH_ANGULAR_SPEED", 1)[1].split(
-        "local function clear_equipped_highlight_passes", 1
+        "local function clear_highlight_passes", 1
     )[0]
     metatable_lua = LuaRuntime(unpack_returned_tuples=True)
     metatable_lua.execute(
@@ -3759,6 +3759,35 @@ def main() -> None:
     assert live_style.word_wrap is False
     assert live_widget.content.better_inventory_blessing_text_2.endswith("...")
     assert "\u00a0" in live_widget.content.better_inventory_blessing_text_2
+
+    # An unrecognised saved mode is treated as the "ellipsis" default by both
+    # the blueprint build and the live per-widget path (they used to disagree).
+    unknown_blueprint = overview_blessing_blueprint("bogus")
+    unknown_build_style = blueprint_pass(
+        unknown_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    for flag in (
+        "better_inventory_auto_fit_long_name",
+        "better_inventory_truncate_long_name",
+        "better_inventory_minimum_font_size",
+        "better_inventory_force_single_line",
+        "better_inventory_fit_font_size_bonus",
+    ):
+        assert unknown_build_style[flag] == ellipsis_style[flag], flag
+    mod.settings.character_overview_blessing_name_mode = "bogus"
+    live_blueprint.init(
+        live_parent, live_widget, long_blessing_element, None, None,
+        None, None, live_blueprint,
+    )
+    for flag in (
+        "better_inventory_auto_fit_long_name",
+        "better_inventory_truncate_long_name",
+        "better_inventory_minimum_font_size",
+        "better_inventory_force_single_line",
+        "better_inventory_fit_font_size_bonus",
+    ):
+        assert live_style[flag] == ellipsis_style[flag], flag
+    mod.settings.character_overview_blessing_name_mode = "ellipsis"
 
     mod.settings.auto_fit_long_blessing_names = True
     mod.settings.truncate_long_blessing_names = False

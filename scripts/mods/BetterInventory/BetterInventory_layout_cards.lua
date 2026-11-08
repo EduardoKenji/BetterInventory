@@ -939,14 +939,68 @@ local function apply_pulsing_dash_alpha(mod, style)
 	style.color[1] = mod._better_inventory_pulsing_dash_alpha or PULSING_DASH_MIN_ALPHA
 end
 
-local function clear_equipped_highlight_passes(pass_template)
+local function clear_highlight_passes(pass_template, style_prefix)
 	for index = #pass_template, 1, -1 do
 		local style_id = pass_template[index] and pass_template[index].style_id
 
-		if style_id == EQUIPPED_HIGHLIGHT_STYLE_PREFIX or type(style_id) == "string" and string.sub(style_id, 1, #EQUIPPED_HIGHLIGHT_STYLE_PREFIX + 1) == EQUIPPED_HIGHLIGHT_STYLE_PREFIX .. "_" then
+		if style_id == style_prefix or type(style_id) == "string" and string.sub(style_id, 1, #style_prefix + 1) == style_prefix .. "_" then
 			table.remove(pass_template, index)
 		end
 	end
+end
+
+-- Appends the frame (dashes/solid) or dropshadow (soft_glow) texture layers shared by
+-- the equipped and new-item highlights. `layers` is only read for frame modes and
+-- `alpha` only for soft_glow; the first layer may use its own change function.
+local function append_highlight_passes(pass_template, options)
+	local frame = options.mode ~= "soft_glow"
+	local material = frame and INVENTORY_HIGHLIGHT_FRAME_MATERIAL or "content/ui/materials/frames/dropshadow_medium"
+	local pass_count = frame and options.layers or 1
+	local base_size_addition = frame and 4 or 16
+	local layer_size_step = frame and 2 or 0
+	local alpha = frame and 255 or options.alpha
+	local z_offset = frame and options.frame_z_offset or options.glow_z_offset
+	local style_prefix = options.style_prefix
+
+	for layer = 1, pass_count do
+		local size_addition = base_size_addition + (layer - 1) * layer_size_step
+
+		pass_template[#pass_template + 1] = {
+			pass_type = "texture",
+			style_id = layer == 1 and style_prefix or style_prefix .. "_layer_" .. tostring(layer),
+			value = material,
+			style = {
+				horizontal_alignment = "center",
+				vertical_alignment = "center",
+				scale_to_material = true,
+				color = {
+					alpha,
+					options.red,
+					options.green,
+					options.blue,
+				},
+				size = {
+					options.card_width,
+					options.card_height,
+				},
+				size_addition = {
+					size_addition,
+					size_addition,
+				},
+				offset = {
+					0,
+					0,
+					z_offset,
+				},
+			},
+			visibility_function = options.visibility_function,
+			change_function = layer == 1 and options.first_change_function or options.change_function,
+		}
+	end
+end
+
+local function equipped_highlight_visible(content)
+	return content and content.equipped == true
 end
 
 local function configure_equipped_highlight(mod, pass_template, card_width, card_height)
@@ -964,33 +1018,21 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 
 	-- Blueprints can be presented more than once by chained integrations. Remove
 	-- only our owned passes before rebuilding the bounded mode-specific set.
-	clear_equipped_highlight_passes(pass_template)
+	clear_highlight_passes(pass_template, EQUIPPED_HIGHLIGHT_STYLE_PREFIX)
 
 	if mode == "off" then
 		return
 	end
 
 	local alpha = 255
-	local material = "content/ui/materials/frames/dropshadow_medium"
 	local pass_count = 1
-	local base_size_addition = 16
-	local layer_size_step = 0
-	local z_offset = 3
 
 	if mode == "animated_dashes" or mode == "pulsing_dashes" then
-		material = INVENTORY_HIGHLIGHT_FRAME_MATERIAL
 		pass_count = math.floor(numeric_setting(mod, "equipped_highlight_animated_border_width", 2, 1, 5) + 0.5)
-		base_size_addition = 4
-		layer_size_step = 2
-		z_offset = 8
 	elseif mode == "solid_border" then
 		local border_width = math.floor(numeric_setting(mod, "equipped_highlight_solid_border_width", 2, 1, 5) + 0.5)
 
-		material = INVENTORY_HIGHLIGHT_FRAME_MATERIAL
 		pass_count = border_width == 1 and 1 or border_width - 1
-		base_size_addition = 4
-		layer_size_step = 2
-		z_offset = 8
 	else
 		local intensity = numeric_setting(mod, "equipped_highlight_glow_intensity", 100, 0, 100)
 
@@ -1003,9 +1045,6 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 	local red = math.floor(numeric_setting(mod, "equipped_highlight_color_r", default_red, 0, 255) + 0.5)
 	local green = math.floor(numeric_setting(mod, "equipped_highlight_color_g", default_green, 0, 255) + 0.5)
 	local blue = math.floor(numeric_setting(mod, "equipped_highlight_color_b", default_blue, 0, 255) + 0.5)
-	local function equipped_visible(content)
-		return content and content.equipped == true
-	end
 	local pulsing_change_function
 
 	if mode == "pulsing_dashes" then
@@ -1014,41 +1053,22 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 		end
 	end
 
-	for layer = 1, pass_count do
-		local size_addition = base_size_addition + (layer - 1) * layer_size_step
-
-		pass_template[#pass_template + 1] = {
-			pass_type = "texture",
-			style_id = layer == 1 and EQUIPPED_HIGHLIGHT_STYLE_PREFIX or EQUIPPED_HIGHLIGHT_STYLE_PREFIX .. "_layer_" .. tostring(layer),
-			value = material,
-			style = {
-				horizontal_alignment = "center",
-				vertical_alignment = "center",
-				scale_to_material = true,
-				color = {
-					alpha,
-					red,
-					green,
-					blue,
-				},
-				size = {
-					card_width,
-					card_height,
-				},
-				size_addition = {
-					size_addition,
-					size_addition,
-				},
-				offset = {
-					0,
-					0,
-					z_offset,
-				},
-			},
-			visibility_function = equipped_visible,
-			change_function = pulsing_change_function,
-		}
-	end
+	append_highlight_passes(pass_template, {
+		mode = mode,
+		layers = pass_count,
+		alpha = alpha,
+		red = red,
+		green = green,
+		blue = blue,
+		card_width = card_width,
+		card_height = card_height,
+		style_prefix = EQUIPPED_HIGHLIGHT_STYLE_PREFIX,
+		glow_z_offset = 3,
+		frame_z_offset = 8,
+		visibility_function = equipped_highlight_visible,
+		first_change_function = pulsing_change_function,
+		change_function = pulsing_change_function,
+	})
 
 	-- Static modes have no change callback. The pulsing callback only applies
 	-- the alpha calculated once by the mod-owned frame update.
@@ -1065,16 +1085,6 @@ end
 
 local function never_visible()
 	return false
-end
-
-local function clear_new_item_highlight_passes(pass_template)
-	for index = #pass_template, 1, -1 do
-		local style_id = pass_template[index] and pass_template[index].style_id
-
-		if style_id == NEW_ITEM_HIGHLIGHT_STYLE_PREFIX or type(style_id) == "string" and string.sub(style_id, 1, #NEW_ITEM_HIGHLIGHT_STYLE_PREFIX + 1) == NEW_ITEM_HIGHLIGHT_STYLE_PREFIX .. "_" then
-			table.remove(pass_template, index)
-		end
-	end
 end
 
 local function configure_new_item_highlight(mod, pass_template, card_width, card_height)
@@ -1130,7 +1140,7 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 		apply_pulsing_dash_alpha(mod, style)
 	end
 
-	clear_new_item_highlight_passes(pass_template)
+	clear_highlight_passes(pass_template, NEW_ITEM_HIGHLIGHT_STYLE_PREFIX)
 
 	-- Enhanced modes replace the conflicting native corner dot. Native mode
 	-- keeps the compact dot but still uses the configured acknowledgement rule.
@@ -1160,77 +1170,55 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 	end
 
 	local alpha = 255
-	local material = "content/ui/materials/frames/dropshadow_medium"
 	local pass_count = 1
-	local base_size_addition = 16
-	local layer_size_step = 0
-	local z_offset = 9
 
 	if mode == "animated_dashes" or mode == "pulsing_dashes" then
-		material = INVENTORY_HIGHLIGHT_FRAME_MATERIAL
 		pass_count = math.floor(numeric_setting(mod, "new_item_highlight_animated_border_width", 2, 1, 5) + 0.5)
-		base_size_addition = 4
-		layer_size_step = 2
 	elseif mode == "solid_border" then
 		local border_width = math.floor(numeric_setting(mod, "new_item_highlight_solid_border_width", 2, 1, 5) + 0.5)
 
-		material = INVENTORY_HIGHLIGHT_FRAME_MATERIAL
 		pass_count = border_width == 1 and 1 or border_width - 1
-		base_size_addition = 4
-		layer_size_step = 2
 	else
 		local intensity = numeric_setting(mod, "new_item_highlight_glow_intensity", 100, 0, 100)
 
 		alpha = math.floor(intensity * 2.55 + 0.5)
-		z_offset = 4
 	end
 
 	local red = math.floor(numeric_setting(mod, "new_item_highlight_color_r", 105, 0, 255) + 0.5)
 	local green = math.floor(numeric_setting(mod, "new_item_highlight_color_g", 210, 0, 255) + 0.5)
 	local blue = math.floor(numeric_setting(mod, "new_item_highlight_color_b", 120, 0, 255) + 0.5)
 
-	for layer = 1, pass_count do
-		local size_addition = base_size_addition + (layer - 1) * layer_size_step
-		local change_function
+	append_highlight_passes(pass_template, {
+		mode = mode,
+		layers = pass_count,
+		alpha = alpha,
+		red = red,
+		green = green,
+		blue = blue,
+		card_width = card_width,
+		card_height = card_height,
+		style_prefix = NEW_ITEM_HIGHLIGHT_STYLE_PREFIX,
+		glow_z_offset = 4,
+		frame_z_offset = 9,
+		visibility_function = new_item_marker_visible,
+		first_change_function = mode == "pulsing_dashes" and pulse_and_acknowledge_new_item or acknowledge_new_item,
+		change_function = mode == "pulsing_dashes" and pulse_new_item or nil,
+	})
+end
 
-		if mode == "pulsing_dashes" then
-			change_function = layer == 1 and pulse_and_acknowledge_new_item or pulse_new_item
-		elseif layer == 1 then
-			change_function = acknowledge_new_item
-		end
+-- Character-overview blessing name fitting as (auto_fit, truncate, minimum_font_size,
+-- force_single_line, fit_font_size_bonus). Unknown values fall back to "ellipsis",
+-- the data.lua default and the only mode that cannot overflow the card.
+local function character_overview_blessing_name_fit(mod)
+	local name_mode = setting(mod, "character_overview_blessing_name_mode", "ellipsis")
 
-		pass_template[#pass_template + 1] = {
-			pass_type = "texture",
-			style_id = layer == 1 and NEW_ITEM_HIGHLIGHT_STYLE_PREFIX or NEW_ITEM_HIGHLIGHT_STYLE_PREFIX .. "_layer_" .. tostring(layer),
-			value = material,
-			style = {
-				horizontal_alignment = "center",
-				vertical_alignment = "center",
-				scale_to_material = true,
-				color = {
-					alpha,
-					red,
-					green,
-					blue,
-				},
-				size = {
-					card_width,
-					card_height,
-				},
-				size_addition = {
-					size_addition,
-					size_addition,
-				},
-				offset = {
-					0,
-					0,
-					z_offset,
-				},
-			},
-			visibility_function = new_item_marker_visible,
-			change_function = change_function,
-		}
+	if name_mode == "shrink_to_fit" then
+		return true, true, 6, true, 1
+	elseif name_mode == "two_lines" then
+		return true, false, MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE, false, 0
 	end
+
+	return false, true, MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE, true, 0
 end
 
 local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style, configuration, columns)
@@ -1295,22 +1283,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local fit_font_size_bonus = 0
 
 		if configuration.character_overview then
-			local name_mode = setting(mod, "character_overview_blessing_name_mode", "ellipsis")
-
-			if name_mode == "shrink_to_fit" then
-				auto_fit_long_name = true
-				truncate_long_name = true
-				minimum_font_size = 6
-				force_single_line = true
-				fit_font_size_bonus = 1
-			elseif name_mode == "ellipsis" then
-				auto_fit_long_name = false
-				truncate_long_name = true
-				force_single_line = true
-			else
-				auto_fit_long_name = true
-				truncate_long_name = false
-			end
+			auto_fit_long_name, truncate_long_name, minimum_font_size, force_single_line, fit_font_size_bonus = character_overview_blessing_name_fit(mod)
 		end
 		local reserved_bottom_row = separate_item_level and (configuration.store_item and blessing_footer_height or item_level_row_height) or blessing_footer_height
 
@@ -1841,17 +1814,17 @@ local function apply_character_overview_blessing_name_mode(mod, widget)
 		return
 	end
 
-	local name_mode = setting(mod, "character_overview_blessing_name_mode", "ellipsis")
+	local auto_fit, truncate, minimum_font_size, force_single_line, font_size_bonus = character_overview_blessing_name_fit(mod)
 
 	for i = 1, WEAPON_BLESSING_COUNT do
 		local style = styles["better_inventory_blessing_text_" .. i]
 
 		if style then
-			style.better_inventory_auto_fit_long_name = name_mode ~= "ellipsis"
-			style.better_inventory_truncate_long_name = name_mode ~= "two_lines"
-			style.better_inventory_minimum_font_size = name_mode == "shrink_to_fit" and 6 or MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE
-			style.better_inventory_force_single_line = name_mode ~= "two_lines"
-			style.better_inventory_fit_font_size_bonus = name_mode == "shrink_to_fit" and 1 or 0
+			style.better_inventory_auto_fit_long_name = auto_fit
+			style.better_inventory_truncate_long_name = truncate
+			style.better_inventory_minimum_font_size = minimum_font_size
+			style.better_inventory_force_single_line = force_single_line
+			style.better_inventory_fit_font_size_bonus = font_size_bonus
 		end
 	end
 end

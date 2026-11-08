@@ -80,7 +80,8 @@ local append_panel_checkbox_passes = PanelDefinitions.append_panel_checkbox_pass
 local panel_type_checkbox_passes = PanelDefinitions.panel_type_checkbox_passes
 Features._diagnostics = nil
 Features._discard_policy = DiscardPolicy
-Features._domains = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains")
+-- BetterInventory.lua publishes the single FeatureDomains instance (it owns the marker state).
+Features._domains = get_mod("BetterInventory")._feature_domains or get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains")
 
 if type(Features._domains) ~= "table" or type(Features._domains.sorting) ~= "table" or type(Features._domains.sorting.signature) ~= "function" then
 	Features._domains = {
@@ -748,68 +749,9 @@ local function panel_type_entry(mod, layout, view)
 	end, { "melee_hotspot", "ranged_hotspot", "curio_hotspot" })
 end
 
-local function panel_curio_protection_type_entry(mod, layout, view)
-	local geometry = view._better_inventory_options_panel_geometry
-	local settings = {
-		{
-			content_id = "health",
-			label_id = "quick_discard_inventory_keep_health_curios",
-			setting_id = "quick_discard_keep_health_curios",
-		},
-		{
-			content_id = "toughness",
-			label_id = "quick_discard_inventory_keep_toughness_curios",
-			setting_id = "quick_discard_keep_toughness_curios",
-		},
-		{
-			content_id = "wounds",
-			label_id = "quick_discard_inventory_keep_wound_curios",
-			setting_id = "quick_discard_keep_wound_curios",
-		},
-		{
-			content_id = "stamina",
-			label_id = "quick_discard_inventory_keep_stamina_curios",
-			setting_id = "quick_discard_keep_stamina_curios",
-		},
-	}
-	local content = {}
-	local passes = {}
-	local gap = 6
-	local width = math.floor((geometry.content_width - gap * 3) / 4)
-
-	for index = 1, #settings do
-		local config = settings[index]
-		local x = (width + gap) * (index - 1)
-
-		content[config.content_id .. "_checked"] = mod:get(config.setting_id) ~= false
-		content[config.content_id .. "_label"] = mod:localize(config.label_id)
-		append_panel_checkbox_passes(passes, config.content_id, x, width, config.content_id .. "_checked", config.content_id .. "_label")
-	end
-
-	return panel_entry(view, "better_inventory_discard_curio_types", 34, passes, content, function(widget)
-		for index = 1, #settings do
-			local config = settings[index]
-			local hotspot = widget.content[config.content_id .. "_hotspot"]
-			local checked_id = config.content_id .. "_checked"
-
-			hotspot.pressed_callback = function()
-				local enabled = not widget.content[checked_id]
-
-				widget.content[checked_id] = enabled
-				mod:set(config.setting_id, enabled, false)
-				Features.sync_quick_discard_settings(mod, layout)
-			end
-		end
-	end, function(widget)
-		for index = 1, #settings do
-			local config = settings[index]
-
-			widget.content[config.content_id .. "_checked"] = mod:get(config.setting_id) ~= false
-		end
-	end, { "health_hotspot", "toughness_hotspot", "wounds_hotspot", "stamina_hotspot" })
-end
-
-local function panel_checkbox_group_entry(mod, layout, view, control_id, settings)
+-- quick_discard_row keeps the quick-discard rows' lenient "~= false" reading and
+-- immediate resync; curio-buyer rows defer the rebuild of the pressed view.
+local function panel_checkbox_group_entry(mod, layout, view, control_id, settings, quick_discard_row)
 	local geometry = view._better_inventory_options_panel_geometry
 	local content = {}
 	local passes = {}
@@ -819,6 +761,10 @@ local function panel_checkbox_group_entry(mod, layout, view, control_id, setting
 
 	local function is_enabled(config)
 		local value = mod:get(config.setting_id)
+
+		if quick_discard_row then
+			return value ~= false
+		end
 
 		if value == nil then
 			return config.default_enabled ~= false
@@ -848,7 +794,7 @@ local function panel_checkbox_group_entry(mod, layout, view, control_id, setting
 
 				widget.content[checked_id] = value
 				mod:set(config.setting_id, value, false)
-				Features.sync_curio_acquisition_settings(mod, layout, view)
+				Features.sync_curio_acquisition_settings(mod, layout, not quick_discard_row and view or nil)
 			end
 		end
 	end, function(widget)
@@ -858,6 +804,31 @@ local function panel_checkbox_group_entry(mod, layout, view, control_id, setting
 			widget.content[config.content_id .. "_checked"] = is_enabled(config)
 		end
 	end, controller_targets)
+end
+
+local function panel_curio_protection_type_entry(mod, layout, view)
+	return panel_checkbox_group_entry(mod, layout, view, "better_inventory_discard_curio_types", {
+		{
+			content_id = "health",
+			label_id = "quick_discard_inventory_keep_health_curios",
+			setting_id = "quick_discard_keep_health_curios",
+		},
+		{
+			content_id = "toughness",
+			label_id = "quick_discard_inventory_keep_toughness_curios",
+			setting_id = "quick_discard_keep_toughness_curios",
+		},
+		{
+			content_id = "wounds",
+			label_id = "quick_discard_inventory_keep_wound_curios",
+			setting_id = "quick_discard_keep_wound_curios",
+		},
+		{
+			content_id = "stamina",
+			label_id = "quick_discard_inventory_keep_stamina_curios",
+			setting_id = "quick_discard_keep_stamina_curios",
+		},
+	}, true)
 end
 
 local function panel_curio_buyer_type_entry(mod, layout, view)
@@ -2298,16 +2269,9 @@ Features.sync_quick_discard_settings = function(mod, layout, deferred_view)
 	end
 end
 
+-- Quick-discard and curio-acquisition panel rows resync the inventory views identically.
 Features.sync_curio_acquisition_settings = function(mod, layout, deferred_view)
-	for view in pairs(registered_inventory_views) do
-		if not view._destroyed then
-			Features.invalidate_view_composition(view)
-
-			if view ~= deferred_view then
-				Features.update_inventory_sort_toggle(mod, layout, view)
-			end
-		end
-	end
+	return Features.sync_quick_discard_settings(mod, layout, deferred_view)
 end
 
 Features.bind_inventory_sort_toggle = function(mod, layout, view)

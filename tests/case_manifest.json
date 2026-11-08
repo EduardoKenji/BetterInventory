@@ -250,10 +250,10 @@
   ],
   "test_features.py": [
     {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-    {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1651},
-    {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1652, "end_line": 2194},
-    {"name": "panel_lifecycle", "risk": "high", "start_line": 2195, "end_line": 3576},
-    {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3577, "end_line": 4125}
+    {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1664},
+    {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1665, "end_line": 2207},
+    {"name": "panel_lifecycle", "risk": "high", "start_line": 2208, "end_line": 3589},
+    {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3590, "end_line": 4138}
   ],
   "test_item_customization.py": [
     {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 451},
@@ -273,10 +273,10 @@
     {"name": "card_geometry", "risk": "high", "start_line": 617, "end_line": 1542},
     {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1543, "end_line": 2016},
     {"name": "content_and_resource_ownership", "risk": "high", "start_line": 2017, "end_line": 3244},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3245, "end_line": 5594},
-    {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5595, "end_line": 5871},
-    {"name": "blessing_wrap_height_and_cruncher_rebind", "risk": "high", "start_line": 5872, "end_line": 5923},
-    {"name": "native_global_store_card_geometry", "risk": "critical", "start_line": 5924, "end_line": 6031}
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3245, "end_line": 5623},
+    {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5624, "end_line": 5900},
+    {"name": "blessing_wrap_height_and_cruncher_rebind", "risk": "high", "start_line": 5901, "end_line": 5952},
+    {"name": "native_global_store_card_geometry", "risk": "critical", "start_line": 5953, "end_line": 6060}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
@@ -338,5 +338,8 @@
   ],
   "test_default_drift_guard.py": [
     {"name": "literal_id_fallbacks_match_data_lua_defaults", "risk": "high", "start_line": 1, "end_line": 100}
+  ],
+  "test_highlight_builders.py": [
+    {"name": "equipped_and_new_item_highlight_passes_match_pinned_golden_output", "risk": "high", "start_line": 173, "end_line": 213}
   ]
 }
