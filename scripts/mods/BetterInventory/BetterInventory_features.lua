@@ -3,7 +3,6 @@ local RaritySettings = require("scripts/settings/item/rarity_settings")
 local PanelDefinitions = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_panel_definitions")
 local PanelRuntime = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_panel_runtime")
 local ArmouryPanel = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_armoury_panel")
-local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
 local DiscardPolicy = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_discard_policy")
 local Lantern = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_lantern")
 local SortOptions = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_sort_options")
@@ -11,18 +10,9 @@ local PanelState = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts
 local DiscardSummary = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_discard_summary")
 local SearchIntegration = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_integration")
 
-if type(CurioValues) ~= "table" then
-	CurioValues = {
-		resolve = function()
-			return
-		end,
-	}
-end
-
 local Features = {}
 Features.sort_option_is_visible = SortOptions.is_visible
 Features.has_visible_sort_options = SortOptions.any_visible
-Features.next_visible_sort_index = SortOptions.next_index
 local armoury_panel
 local scenegraph_rect
 local rebuild_inventory_options_panel
@@ -1948,10 +1938,6 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 
 	if not panel then
 		Features.invalidate_view_composition(view)
-
-		if panel then
-			set_options_panel_visible(view, panel, false)
-		end
 
 		return false
 	end

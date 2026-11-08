@@ -563,20 +563,4 @@ Domains.panels.invalidate = function(view)
 	return true
 end
 
-Domains.integration = {}
-
-Domains.integration.method_enabled = function(object, method_name)
-	if type(object) ~= "table" and type(object) ~= "userdata" then
-		return false
-	end
-
-	if type(object[method_name]) ~= "function" then
-		return true
-	end
-
-	local success, enabled = pcall(object[method_name], object)
-
-	return success and enabled == true
-end
-
 return Domains

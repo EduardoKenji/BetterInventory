@@ -74,7 +74,7 @@ local function normalize(value)
 		value = tostring(value or "")
 	end
 
-	return string.gsub(trim(utf8_lower(value)), "%s+", " ")
+	return (string.gsub(trim(utf8_lower(value)), "%s+", " "))
 end
 
 local function utf8_length(value)

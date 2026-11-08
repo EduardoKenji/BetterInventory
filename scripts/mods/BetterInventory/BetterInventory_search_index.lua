@@ -37,7 +37,6 @@ local FINGERPRINT_PROVIDER_NAMES = {
 local ITEM_NAME_KEYS = {
 	"id",
 	"name",
-	"__master_item",
 	"master_id",
 }
 
