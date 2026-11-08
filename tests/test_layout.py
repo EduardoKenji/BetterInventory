@@ -2767,7 +2767,7 @@ def main() -> None:
     # A raw _G lookup therefore misses Application and leaves alpha at 15%.
     cards_source = LAYOUT_CARDS_PATH.read_text(encoding="utf-8")
     animation_source = cards_source.split("local PULSING_DASH_ANGULAR_SPEED", 1)[1].split(
-        "local function clear_equipped_highlight_passes", 1
+        "local function clear_highlight_passes", 1
     )[0]
     metatable_lua = LuaRuntime(unpack_returned_tuples=True)
     metatable_lua.execute(

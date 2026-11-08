@@ -338,5 +338,8 @@
   ],
   "test_default_drift_guard.py": [
     {"name": "literal_id_fallbacks_match_data_lua_defaults", "risk": "high", "start_line": 1, "end_line": 100}
+  ],
+  "test_highlight_builders.py": [
+    {"name": "equipped_and_new_item_highlight_passes_match_pinned_golden_output", "risk": "high", "start_line": 173, "end_line": 213}
   ]
 }
